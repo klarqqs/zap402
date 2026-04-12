@@ -28,12 +28,12 @@ Be respectful, constructive, and inclusive. We follow the [Contributor Covenant]
 1. **Fork** this repository to your GitHub account
 2. **Clone** your fork locally:
    ```bash
-   git clone https://github.com/<your-username>/stellar-tipz.git
-   cd stellar-tipz
+   git clone https://github.com/<your-username>/zap402.git
+   cd zap402
    ```
 3. **Set upstream** remote:
    ```bash
-   git remote add upstream https://github.com/akan_nigeria/stellar-tipz.git
+   git remote add upstream git+https://github.com/klarqqs/zap402.git
    ```
 4. Follow the [Setup Guide](./SETUP.md) to configure your local environment
 
@@ -207,7 +207,7 @@ PRs are evaluated on:
 
 ## Questions?
 
-- Open a [Discussion](https://github.com/akan_nigeria/stellar-tipz/discussions) for general questions
+- Open a [Discussion](https://github.com/akan_nigeria/zap402/discussions) for general questions
 - Comment on the relevant issue for task-specific questions
 - Tag `@akan_nigeria` for urgent matters
 

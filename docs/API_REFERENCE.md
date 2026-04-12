@@ -1,6 +1,6 @@
 # Contract API Reference
 
-> Quick reference for all public functions in the Tipz Soroban contract.
+> Quick reference for all public functions in the Zap402 Soroban contract.
 
 ---
 

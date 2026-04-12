@@ -10,7 +10,7 @@ interface QRCodeProps {
   size?: number;
 }
 
-const CANVAS_ID = "tipz-qr-canvas";
+const CANVAS_ID = "Zap402-qr-canvas";
 
 const QRCode: React.FC<QRCodeProps> = ({ url, size = 200 }) => {
   const theme = useDocumentTheme();

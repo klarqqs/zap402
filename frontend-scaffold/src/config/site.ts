@@ -1,16 +1,21 @@
 /**
  * Marketing / product URLs and social links (single source of truth for shell + landing).
  */
+
 export const site = {
   name: "Zap402",
-  tagline: "USDC-first creator payouts on Stellar — zaps, unlocks, and AI",
-  githubRepo: "https://github.com/Akanimoh12/stellar-tipz",
-  githubOrgRepo: "https://github.com/Akanimoh12/Stellar-Tipz",
-  twitter: "https://twitter.com/TipzApp",
+  tagline: "The payment layer for AI commerce — pay-per-query agents on Stellar",
+  description: "Browse 20+ AI agents, pay per prompt in USDC, get on-chain receipts. Every query is a closed deal on Stellar.",
+  githubRepo: "https://github.com/klarqqs/zap402",
+  githubOrgRepo: "https://github.com/klarqqs/zap402",
+  twitter: "https://twitter.com/zap402",
   stellarDiscord: "https://discord.gg/stellardev",
   sorobanDocs: "https://soroban.stellar.org/docs",
   sorobanHome: "https://soroban.stellar.org",
+  x402Docs: "https://x402.org",
+  docsUrl: "https://zap402.xyz/docs",
 } as const;
+ 
 
 /** Public URL for /@username links (env override, else current origin in the browser). */
 export function getSiteOrigin(): string {

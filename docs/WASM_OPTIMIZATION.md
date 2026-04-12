@@ -57,13 +57,13 @@ cd contracts
 cargo build --target wasm32-unknown-unknown --release
 
 # Analyze top functions
-twiggy top target/wasm32-unknown-unknown/release/tipz_contract.wasm
+twiggy top target/wasm32-unknown-unknown/release/Zap402_contract.wasm
 
 # Analyze dominators (what keeps each item alive)
-twiggy dominators target/wasm32-unknown-unknown/release/tipz_contract.wasm
+twiggy dominators target/wasm32-unknown-unknown/release/Zap402_contract.wasm
 
 # Analyze paths (why something is included)
-twiggy paths target/wasm32-unknown-unknown/release/tipz_contract.wasm <function_name>
+twiggy paths target/wasm32-unknown-unknown/release/Zap402_contract.wasm <function_name>
 ```
 
 ## Future Optimization Opportunities

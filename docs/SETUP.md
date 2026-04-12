@@ -22,11 +22,11 @@ Complete guide to setting up Zap402 for local development.
 
 ```bash
 # Clone your fork
-git clone https://github.com/<your-username>/stellar-tipz.git
-cd stellar-tipz
+git clone https://github.com/<your-username>/zap402.git
+cd zap402
 
 # Set upstream
-git remote add upstream https://github.com/akan_nigeria/stellar-tipz.git
+git remote add upstream git+https://github.com/klarqqs/zap402.git
 ```
 
 ---
@@ -72,15 +72,15 @@ cargo clippy -- -D warnings
 
 ```bash
 # Generate a testnet keypair (if needed)
-soroban keys generate tipz-dev --network testnet
+soroban keys generate Zap402-dev --network testnet
 
 # Fund the account via Friendbot
-curl "https://friendbot.stellar.org?addr=$(soroban keys address tipz-dev)"
+curl "https://friendbot.stellar.org?addr=$(soroban keys address Zap402-dev)"
 
 # Deploy the contract (Zap402 workspace outputs zap402_contract.wasm)
 soroban contract deploy \
   --wasm target/wasm32-unknown-unknown/release/zap402_contract.wasm \
-  --source tipz-dev \
+  --source Zap402-dev \
   --network testnet
 ```
 
@@ -127,7 +127,7 @@ The app will be available at **http://localhost:3000**.
 ## 5. Project Structure Quick Reference
 
 ```
-stellar-tipz/
+zap402/
 ├── contracts/          # Soroban smart contracts (Rust)
 │   └── zap402/         # Main contract crate
 ├── frontend-scaffold/  # React + TypeScript frontend
@@ -238,4 +238,4 @@ npm run build
 - Read [CONTRIBUTING.md](./CONTRIBUTING.md) for the contribution workflow
 - Read [CONTRACT_SPEC.md](./CONTRACT_SPEC.md) for the smart contract specification
 - Read [FRONTEND_GUIDE.md](./FRONTEND_GUIDE.md) for frontend conventions
-- Browse [open issues](https://github.com/akan_nigeria/stellar-tipz/issues) and pick one to work on
+- Browse [open issues](https://github.com/akan_nigeria/zap402/issues) and pick one to work on

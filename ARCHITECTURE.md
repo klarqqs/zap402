@@ -112,7 +112,7 @@ zap402/
 │       ├── hooks/                  # Custom React hooks
 │       │   ├── useWallet.ts
 │       │   ├── useContract.ts
-│       │   ├── useTipz.ts
+│       │   ├── useZap402.ts
 │       │   └── useProfile.ts
 │       │
 │       ├── store/                  # Zustand state stores
@@ -196,7 +196,7 @@ React SPA that talks to the contract through the Stellar SDK.
 
 ```
 ┌─────────────┐   REST/RPC    ┌──────────────────┐   Soroban TX    ┌───────────────┐
-│   Browser    │ ────────────► │  Soroban RPC      │ ──────────────► │  Tipz Contract │
+│   Browser    │ ────────────► │  Soroban RPC      │ ──────────────► │  Zap402 Contract │
 │  (React UI)  │ ◄──────────── │  (Horizon+RPC)   │ ◄────────────── │  (on Stellar)  │
 └──────┬───────┘               └──────────────────┘                 └───────────────┘
        │
@@ -247,7 +247,7 @@ React SPA that talks to the contract through the Stellar SDK.
 |----------|----------|---------|
 | `SOROBAN_RPC_URL` | Contract deploy scripts | RPC endpoint |
 | `SOROBAN_NETWORK_PASSPHRASE` | Contract deploy scripts | Network identifier |
-| `CONTRACT_ID` | Frontend `.env` | Deployed Tipz contract address |
+| `CONTRACT_ID` | Frontend `.env` | Deployed Zap402 contract address |
 | `REACT_APP_NETWORK` | Frontend `.env` | `TESTNET` or `PUBLIC` |
 
 ---

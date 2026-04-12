@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Zap402 frontend — zaps, unlocks, clone monetization on Stellar",
+  "description": "Zap402 — pay-per-query AI agent marketplace on Stellar",
   "scripts": {
     "dev": "concurrently -k \"npm run dev:api\" \"npm run dev:vite\"",
     "dev:vite": "vite",
@@ -16,7 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "lint-staged": {
     "**/*.{ts,tsx}": [
@@ -26,7 +26,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/akan_nigeria/stellar-tipz.git"
+    "url": "git+https://github.com/klarqqs/zap402.git"
   },
   "prettier": "@stellar/prettier-config",
   "keywords": [],

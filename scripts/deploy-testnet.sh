@@ -5,7 +5,7 @@
 # Usage:
 #   ./scripts/deploy-testnet.sh [KEY_NAME]
 #
-# KEY_NAME defaults to "zap402-deployer" (pass e.g. "tipz-deployer" if you reuse an old key).
+# KEY_NAME defaults to "zap402-deployer" (pass e.g. "Zap402-deployer" if you reuse an old key).
 
 set -euo pipefail
 

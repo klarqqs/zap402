@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 type Theme = "light" | "dark";
 
 const STORAGE_KEY = "zap402-theme";
-const LEGACY_STORAGE_KEY = "stellar-tipz-theme";
+const LEGACY_STORAGE_KEY = "zap402-theme";
 
 interface UseThemeReturn {
   theme: Theme;

@@ -17,16 +17,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Nursca/Stellar-Tipz.git"
+    "url": "git+https://github.com/Nursca/zap402.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/Nursca/Stellar-Tipz/issues"
+    "url": "https://github.com/Nursca/zap402/issues"
   },
-  "homepage": "https://github.com/Nursca/Stellar-Tipz#readme",
+  "homepage": "https://github.com/Nursca/zap402#readme",
   "dependencies": {
     "react-speech-recognition": "^4.0.1"
   },

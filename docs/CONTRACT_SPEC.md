@@ -6,7 +6,7 @@
 
 ## Overview
 
-The Tipz contract manages creator profiles, tip transactions, balance accounting, credit scores, and a leaderboard — all on-chain via Stellar's Soroban runtime.
+The Zap402 contract manages creator profiles, tip transactions, balance accounting, credit scores, and a leaderboard — all on-chain via Stellar's Soroban runtime.
 
 **Contract ID**: TBD (deployed to Testnet)  
 **Language**: Rust (Soroban SDK)  

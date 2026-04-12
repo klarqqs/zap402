@@ -89,13 +89,12 @@ const Footer: React.FC = () => {
         </div>
 
         {/* Developers */}
-        <div className="flex flex-col gap-2">
-          <h3 className={heading}>Developers</h3>
-          <a href={docsUrl} target="_blank" rel="noopener noreferrer" className={link}>Docs</a>
-          <a href={site.githubOrgRepo} target="_blank" rel="noopener noreferrer" className={link}>GitHub</a>
-          <a href={contractSpecUrl} target="_blank" rel="noopener noreferrer" className={link}>Contract spec</a>
-          <a href={blogUrl} target="_blank" rel="noopener noreferrer" className={link}>Updates</a>
-        </div>
+       <div className="flex flex-col gap-2">
+  <h3 className={heading}>Developers</h3>
+  <a href="https://github.com/klarqqs/zap402" target="_blank" rel="noopener noreferrer" className={link}>GitHub</a>
+  <a href="https://github.com/klarqqs/zap402/blob/main/README.md" target="_blank" rel="noopener noreferrer" className={link}>Docs</a>
+  <a href="https://github.com/klarqqs/zap402/issues" target="_blank" rel="noopener noreferrer" className={link}>Issues</a>
+</div>
 
         {/* Community */}
         <div className="flex flex-col gap-2">
