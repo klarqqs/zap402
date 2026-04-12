@@ -21,7 +21,7 @@ const CLAUDE_DEFAULT: AgentOption = {
   handle: "claude_agent",
   provider: "Anthropic",
   category: "research",
-  priceUsdc: 0.50,
+  priceUsdc: 0.02,
 };
 
 interface AgentStore {

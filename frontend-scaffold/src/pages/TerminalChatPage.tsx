@@ -1191,7 +1191,7 @@ const TerminalChatPage: React.FC = () => {
     ? rawAgents.map(a => ({
       id: a.id, name: a.name, handle: a.handle,
       provider: a.provider, category: a.category,
-      imageUrl: a.imageUrl, priceUsdc: 0.50,
+      imageUrl: a.imageUrl, priceUsdc: 0.02,
     }))
     : [CLAUDE_DEFAULT];
 
