@@ -1032,16 +1032,6 @@ interface InputBarProps {
   placeholder?: string;
 }
 
-const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-// Auto-resize handler — call this wherever onChange fires
-const autoResize = () => {
-  const el = textareaRef.current;
-  if (!el) return;
-  el.style.height = "auto";
-  el.style.height = Math.min(el.scrollHeight, 200) + "px"; // 200px ≈ ~8 lines
-};
-
 const InputBar: React.FC<InputBarProps> = ({
   value, onChange, onSend, onVoiceToggle, onImageAttach, onImageRemove,
   busy, attachedImage, voiceState, transcript,
@@ -1087,10 +1077,7 @@ const InputBar: React.FC<InputBarProps> = ({
           <textarea
             ref={textareaRef}
             value={value}
-            onChange={(e) => {
-              onChange(e.target.value);
-              autoResize();
-            }}
+            onChange={(e) => onChange(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -1101,11 +1088,10 @@ const InputBar: React.FC<InputBarProps> = ({
             rows={1}
             disabled={busy}
             className="w-full resize-none bg-transparent px-4 pt-3.5 pb-3 
-             font-body text-sm text-zap-ink 
-             placeholder:text-zap-ink-faint 
-             outline-none border-none ring-0 focus:ring-0 focus:outline-none
-             appearance-none overflow-y-auto"
-            style={{ maxHeight: "200px" }}
+                     font-body text-sm text-zap-ink 
+                     placeholder:text-zap-ink-faint 
+                     outline-none border-none ring-0 focus:ring-0 focus:outline-none
+                     appearance-none"
             spellCheck={false}
             autoComplete="off"
             autoCorrect="off"
@@ -1328,7 +1314,6 @@ const TerminalChatPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
 
-  // NEW: Stop voice recorder immediately when PaymentGateCard appears
   useEffect(() => {
     if (pendingPayment && voiceState !== "idle") {
       voiceLoopRef.current = false;
@@ -1782,8 +1767,7 @@ const TerminalChatPage: React.FC = () => {
                   Zap402
                 </h1>
                 <p className="font-body text-sm text-zap-ink-muted">
-                  pay-per-query AI marketplace
-
+                  Pay-per-query AI. One prompt · One payment · On-chain receipt.
                 </p>
               </div>
             )}
