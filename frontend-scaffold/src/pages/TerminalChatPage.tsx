@@ -1753,7 +1753,7 @@ const allAgents: AgentOption[] = rawAgents.length > 0
                   Zap402
                 </h1>
                 <p className="font-body text-sm text-zap-ink-muted">
-                  Pay-per-query AI. One prompt · One payment · On-chain receipt.
+                  pay-per-query AI marketplace
                 </p>
               </div>
             )}
