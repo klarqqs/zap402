@@ -44,7 +44,7 @@ const DashboardLayout: React.FC = () => {
         />
         <main
           id="main-content"
-          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain focus:outline-none"
+          className="min-h-0 flex-1 overflow-y-auto focus:outline-none"
         >
           <div className="w-full max-w-[1200px] mx-auto">
             <Outlet />

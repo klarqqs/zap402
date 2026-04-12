@@ -695,8 +695,8 @@ const PaymentGateCard: React.FC<{
 
         {/* Description */}
         <p className="font-body text-[11px] text-zap-ink-muted leading-relaxed">
-          Pay once to unlock this response from{" "}
-          <strong className="text-zap-ink">{agent.name}</strong>. Transaction confirmed on-chain.
+          Unlocked via{" "}
+          <strong className="text-zap-ink">{agent.name}</strong> — payment confirmed on-chain.
         </p>
 
         {/* Error Message */}
@@ -753,9 +753,9 @@ const TxConfirmedBubble: React.FC<{ txHash: string; agentName: string; price: nu
       </div>
       <div className="rounded-2xl rounded-tl-sm bg-emerald-500/8 border border-emerald-500/20 px-4 py-3 max-w-sm space-y-2">
         <p className="font-body text-[12px] font-semibold text-emerald-600 dark:text-emerald-400">
-          ✓ Payment confirmed — ${price.toFixed(2)} USDC sent to {agentName}
+          Payment confirmed — ${price.toFixed(2)} USDC sent to {agentName}
         </p>
-        <p className="font-mono text-[9px] text-zap-ink-faint break-all">{txHash}</p>
+        {/* <p className="font-mono text-[9px] text-zap-ink-faint break-all">{txHash}</p> */}
         <div className="flex gap-2 pt-1">
           <button
             type="button"
