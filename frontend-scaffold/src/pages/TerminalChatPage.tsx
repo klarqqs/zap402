@@ -42,6 +42,7 @@ import { useZapPayment } from "@/hooks/useZapPayment";
 import { useProfileStore } from "@/state/profileStore";
 import { useOnChainAgents } from "@/hooks";
 import { useAgentStore, AgentOption } from "@/state/agentStore";
+import Logo from "@/components/primitives/Logo";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1748,14 +1749,12 @@ const allAgents: AgentOption[] = rawAgents.length > 0
         {isCenterState && (
           <div className="flex flex-col items-center justify-center flex-1 text-center gap-6">
             {!fromZap && (
-              <div>
-                <h1 className="font-display text-3xl font-semibold text-zap-ink tracking-tight mb-1">
-                  Zap402
-                </h1>
-                <p className="font-body text-sm text-zap-ink-muted">
-                  pay-per-query AI marketplace
-                </p>
-              </div>
+             <div className="flex flex-col items-center gap-2">
+  <Logo className="h-8 w-auto text-zap-ink" />
+  <p className="font-body text-sm text-zap-ink-muted">
+    pay-per-query AI marketplace
+  </p>
+</div>
             )}
 
             <div className="w-full max-w-xl">

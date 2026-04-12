@@ -110,12 +110,8 @@ const ProfilePurchasesContent: React.FC<ProfilePurchasesContentProps> = ({
   const [creatorByAddress, setCreatorByAddress] = useState<
     Record<string, Profile | null>
   >({});
-
   useEffect(() => {
-    if (creatorAddresses.length === 0) {
-      setCreatorByAddress({});
-      return;
-    }
+    if (creatorAddresses.length === 0) return;
     let cancelled = false;
     (async () => {
       const map: Record<string, Profile | null> = {};
@@ -218,22 +214,20 @@ const ProfilePurchasesContent: React.FC<ProfilePurchasesContentProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab("requests")}
-            className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
-              activeTab === "requests"
+            className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${activeTab === "requests"
                 ? "bg-zap-brand text-white"
                 : "text-zap-ink-muted hover:bg-zap-bg-alt"
-            }`}
+              }`}
           >
             Requests
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("content")}
-            className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
-              activeTab === "content"
+            className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${activeTab === "content"
                 ? "bg-zap-brand text-white"
                 : "text-zap-ink-muted hover:bg-zap-bg-alt"
-            }`}
+              }`}
           >
             Content
           </button>
@@ -439,9 +433,8 @@ const ProfilePurchasesContent: React.FC<ProfilePurchasesContentProps> = ({
                       >
                         {isOpen ? "Hide content" : "View unlocked content"}
                         <ChevronDown
-                          className={`h-4 w-4 shrink-0 transition-transform ${
-                            isOpen ? "rotate-180" : ""
-                          }`}
+                          className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""
+                            }`}
                           aria-hidden
                         />
                       </button>

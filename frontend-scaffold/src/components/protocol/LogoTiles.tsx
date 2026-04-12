@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import Logo from "@/components/primitives/Logo";
 
 const LETTERS = ["Z", "A", "P", "4", "0", "2"] as const;
 
@@ -23,9 +24,7 @@ export function LogoTiles({
         className={`inline-flex shrink-0 items-center no-underline ${className}`}
         aria-label="Zap402 home"
       >
-        <h1 className="font-display font-semibold w-full text-[clamp(1.25rem,9vw,2rem)] font-semibold leading-[1.1] tracking-tight text-zap-ink">
-          Zap402
-        </h1>
+        <Logo className="h-8 w-auto text-zap-ink" />
       </Link>
     );
   }
