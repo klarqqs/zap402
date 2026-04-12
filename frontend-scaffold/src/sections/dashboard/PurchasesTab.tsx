@@ -1,19 +1,20 @@
+// src/pages/terminal/PurchasesTab.tsx
+// FIX: Resume conversation automatically sets the correct agent
+// by passing the last-used agent in state to TerminalChatPage
+
 import React, { useState, useCallback } from "react";
 import {
   CheckCircle2,
   GitCompare,
   ChevronRight,
   Zap,
-  ExternalLink,
-  RotateCcw,
   MessageSquare,
-  Clock,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import DashboardTabPageHeader from "@/components/dashboard/DashboardTabPageHeader";
 
-// ─── Types (mirrored from TerminalChatPage) ───────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type CategoryType = "chat" | "research" | "code" | "image" | "video" | "general";
 
@@ -38,6 +39,7 @@ interface Conversation {
   updatedAt: number;
   messages: ConvMessage[];
   usedAgentIds: string[];
+  agentId?: string;
 }
 
 interface AgentOption {
@@ -116,9 +118,23 @@ function catMeta(cat: CategoryType) {
   return m[cat] ?? m.general;
 }
 
-// ─── Static agent registry for compare (subset of known agents) ──────────────
-// In production this comes from useOnChainAgents — we read from localStorage here
-// so PurchasesTab doesn't need the hook. It navigates to TerminalChatPage with state.
+// FIX: Helper to extract the last-used agent from a conversation's messages
+function extractLastAgent(conv: Conversation): AgentOption | null {
+  // Find the last assistant message that isn't a TX confirmation
+  const lastAssistant = [...conv.messages]
+    .reverse()
+    .find(m => m.role === "assistant" && !m.content.startsWith("__TX_CONFIRMED__:"));
+
+  if (!lastAssistant) return null;
+
+  return {
+    id: lastAssistant.agentId,
+    name: lastAssistant.agentName,
+    handle: lastAssistant.agentId.replace("_", "-"),
+    provider: lastAssistant.agentProvider,
+    category: lastAssistant.category ?? "general",
+  };
+}
 
 const KNOWN_AGENTS: AgentOption[] = [
   { id: "claude", name: "Claude Agent", handle: "claude_agent", provider: "Anthropic", category: "research" },
@@ -149,7 +165,6 @@ const CompareModal: React.FC<{
     a => a.category === conv.category && !conv.usedAgentIds.includes(a.id)
   );
 
-  // Fallback: show all agents not used if category has no match
   const candidates = availableAgents.length > 0
     ? availableAgents
     : KNOWN_AGENTS.filter(a => !conv.usedAgentIds.includes(a.id)).slice(0, 6);
@@ -229,7 +244,6 @@ const ConvCard: React.FC<{
 
   const { emoji, label } = catMeta(conv.category);
 
-  // Extract useful message counts
   const userMessages = conv.messages.filter(m => m.role === "user");
   const agentResponses = conv.messages.filter(m =>
     m.role === "assistant" && !m.content.startsWith("__TX_CONFIRMED__:")
@@ -238,37 +252,24 @@ const ConvCard: React.FC<{
     m.role === "assistant" && m.content.startsWith("__TX_CONFIRMED__:")
   );
 
-  // Total spent
   const totalSpent = txMessages.reduce((sum, m) => {
     const parts = m.content.split(":");
     return sum + parseFloat(parts[2] ?? "0");
   }, 0);
 
-  // Last user prompt
   const lastUserMsg = userMessages[userMessages.length - 1];
-  const lastResponse = agentResponses[agentResponses.length - 1];
-
-  // Agents used
   const usedAgentNames = [...new Set(agentResponses.map(m => m.agentName))];
-
-  // Available compare candidates
-  const compareAvailable = KNOWN_AGENTS.filter(
-    a => a.category === conv.category && !conv.usedAgentIds.includes(a.id)
-  ).length > 0;
 
   return (
     <>
       <div className="rounded-2xl border border-zap-bg-alt bg-zap-bg-raised overflow-hidden transition-colors hover:border-zap-bg-alt">
-        {/* Card header — always visible */}
         <button
           type="button"
           onClick={() => setExpanded(v => !v)}
           className="w-full flex items-center gap-3 px-4 py-3 border-b border-zap-bg-alt hover:bg-zap-bg-alt transition-colors text-left"
         >
-          {/* Status icon */}
           <CheckCircle2 size={13} strokeWidth={2} className="shrink-0 text-emerald-500" />
 
-          {/* Title + meta */}
           <div className="flex-1 min-w-0">
             <p className="font-body text-[13px] font-semibold text-zap-ink truncate leading-tight">
               {conv.title}
@@ -280,7 +281,6 @@ const ConvCard: React.FC<{
             </p>
           </div>
 
-          {/* Time + expand */}
           <div className="flex items-center gap-2 shrink-0">
             <span className="font-mono text-[10px] text-zap-ink-faint hidden sm:inline">
               {timeAgo(conv.updatedAt)}
@@ -293,10 +293,8 @@ const ConvCard: React.FC<{
           </div>
         </button>
 
-        {/* Expanded body */}
         {expanded && (
           <div className="px-4 py-4 space-y-4 bg-zap-bg/30">
-            {/* Last prompt */}
             {lastUserMsg && (
               <div>
                 <p className="font-body text-[10px] uppercase tracking-[0.1em] text-zap-ink-faint mb-1.5">
@@ -308,7 +306,6 @@ const ConvCard: React.FC<{
               </div>
             )}
 
-            {/* Agent responses summary */}
             {agentResponses.length > 0 && (
               <div>
                 <p className="font-body text-[10px] uppercase tracking-[0.1em] text-zap-ink-faint mb-2">
@@ -342,7 +339,6 @@ const ConvCard: React.FC<{
               </div>
             )}
 
-            {/* Stats row */}
             <div className="flex items-center gap-3 pt-1 border-t border-zap-bg-alt flex-wrap">
               {totalSpent > 0 && (
                 <div className="inline-flex items-center gap-1 font-body text-[11px] text-emerald-600 dark:text-emerald-400">
@@ -358,9 +354,7 @@ const ConvCard: React.FC<{
               </span>
             </div>
 
-            {/* Action buttons */}
             <div className="flex gap-2 flex-wrap pt-1">
-              {/* Continue */}
               <button
                 type="button"
                 onClick={() => onResume(conv)}
@@ -370,7 +364,6 @@ const ConvCard: React.FC<{
                 Continue
               </button>
 
-              {/* Compare — always available, shows modal */}
               <button
                 type="button"
                 onClick={() => setShowCompare(true)}
@@ -405,7 +398,6 @@ const PurchasesTab: React.FC = () => {
     .filter(c => c.messages.some(m => m.role === "assistant" && !m.content.startsWith("__TX_CONFIRMED__:")))
     .sort((a, b) => b.updatedAt - a.updatedAt);
 
-  // Stats
   const totalDeals = completedConvs.reduce((sum, c) => {
     return sum + c.messages.filter(m => m.content.startsWith("__TX_CONFIRMED__:")).length;
   }, 0);
@@ -417,12 +409,17 @@ const PurchasesTab: React.FC = () => {
   }, 0);
 
   const handleResume = useCallback((conv: Conversation) => {
-    navigate("/terminal/chat", { state: { resumeConvId: conv.id } });
+    // FIX: Extract the last-used agent and pass it so chat page auto-sets it
+    const lastAgent = extractLastAgent(conv);
+    navigate("/terminal/chat", {
+      state: {
+        resumeConvId: conv.id,
+        agent: lastAgent ?? undefined, // pass agent so TerminalChatPage syncs it globally
+      },
+    });
   }, [navigate]);
 
   const handleCompare = useCallback((conv: Conversation, agent: AgentOption) => {
-    // Navigate to chat with the conversation resumed + the compare agent pre-selected
-    // TerminalChatPage will see resumeConvId and load the conv, agent triggers compare flow
     navigate("/terminal/chat", {
       state: {
         resumeConvId: conv.id,
@@ -440,7 +437,6 @@ const PurchasesTab: React.FC = () => {
         description="View all chats history here"
       />
 
-      {/* Stats row */}
       {completedConvs.length > 0 && (
         <div className="flex items-center gap-4 flex-wrap">
           <div className="rounded-xl border border-zap-bg-alt bg-zap-bg-raised px-3 py-2">

@@ -424,7 +424,7 @@ const server = http.createServer(async (req, res) => {
         },
         body: JSON.stringify({
           model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-          max_tokens: 1024,
+          max_tokens: 8192,
           messages: [
             { role: "system", content: system },
             { role: "user", content: message.trim() },
@@ -484,7 +484,7 @@ const server = http.createServer(async (req, res) => {
         },
         body: JSON.stringify({
           model: MODEL,
-          max_tokens: 1024,
+          max_tokens: 8192,
           system,
           messages: [{ role: "user", content: message.trim() }],
         }),

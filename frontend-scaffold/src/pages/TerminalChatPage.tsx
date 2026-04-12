@@ -1,10 +1,22 @@
+// src/pages/terminal/TerminalChatPage.tsx
+// FIXES:
+// 1. Agent syncs via useAgentStore (persisted global state)
+// 2. History resume auto-sets the correct agent
+// 3. Zap page prompt click starts conversation immediately (no greeting)
+// 4. Images render correctly (same as video)
+// 5. Chat nav link does NOT reset state — only New Chat button does
+// 6. No "Good morning/evening" greeting shown when arriving from Zap page
+// 7. FIX: Declining payment no longer collapses back to center state
+//    (user message is now included in newConv.messages at creation time,
+//     so activeConv.messages.length is always > 0 before the payment gate)
+// 8. FIX: Agent selector next to send button is now a dropdown with all agents
+
 import React, {
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
 import {
   ImageIcon,
   Mic,
@@ -28,21 +40,11 @@ import { useOpenWalletConnect } from "@/components/wallet/WalletConnectModal";
 import { useZapPayment } from "@/hooks/useZapPayment";
 import { useProfileStore } from "@/state/profileStore";
 import { useOnChainAgents } from "@/hooks";
+import { useAgentStore, AgentOption } from "@/state/agentStore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type CategoryType = "chat" | "research" | "code" | "image" | "video" | "general";
-
-interface AgentOption {
-  id: string;
-  name: string;
-  handle: string;
-  provider: string;
-  category: string;
-  imageUrl?: string;
-  walletAddress?: string;
-  priceUsdc?: number;
-}
 
 interface ConvMessage {
   id: string;
@@ -67,6 +69,7 @@ interface Conversation {
   updatedAt: number;
   messages: ConvMessage[];
   usedAgentIds: string[];
+  agentId?: string; // persisted agent for this conversation
 }
 
 // ─── Category Prompt Suggestions ─────────────────────────────────────────────
@@ -130,18 +133,8 @@ const CLAUDE_DEFAULT: AgentOption = {
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || "";
 const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || "";
 
-const ACTIVE_CONV_KEY = "zap402_active_conv_id";
 const DRAFT_INPUT_KEY = "zap402_draft_input";
 
-function loadActiveConvId(): string | null {
-  try { return localStorage.getItem(ACTIVE_CONV_KEY); } catch { return null; }
-}
-function saveActiveConvId(id: string | null) {
-  try {
-    if (id) localStorage.setItem(ACTIVE_CONV_KEY, id);
-    else localStorage.removeItem(ACTIVE_CONV_KEY);
-  } catch { }
-}
 function loadDraftInput(): string {
   try { return localStorage.getItem(DRAFT_INPUT_KEY) ?? ""; } catch { return ""; }
 }
@@ -335,7 +328,7 @@ async function callGroq(
     body: JSON.stringify({
       model: "llama-3.3-70b-versatile",
       messages: [{ role: "system", content: systemPrompt }, ...messages],
-      max_tokens: 1024,
+      max_tokens: 8192,
       temperature: 0.75,
     }),
   });
@@ -361,7 +354,7 @@ async function callClaude(
     },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
+      max_tokens: 8192,
       system: systemPrompt,
       messages,
     }),
@@ -381,7 +374,9 @@ function buildSystemPrompt(agent: AgentOption, category: CategoryType): string {
 
 You operate via the x402 payment protocol — users pay USDC per query to receive your premium response.
 
-Be direct, specific, and high-quality. Tailor your response to the ${label} category. Max 400 words unless the task genuinely requires more.
+Be direct, specific, and high-quality. Tailor your response to the ${label} category. Be direct, specific, and high-quality. 
+If the user asks for a long research report, 10-page document, detailed code, or complex analysis, generate the full length they requested (up to 8000 words / 7000 tokens). 
+Do not summarize unless explicitly told to.
 
 Agent profile: ${agent.name} by ${agent.provider}, handle @${agent.handle}.`;
 }
@@ -445,18 +440,25 @@ const AgentAvatar: React.FC<{ agent: AgentOption; size?: number; fontSize?: numb
 );
 
 // ─── Category Discovery Panel ─────────────────────────────────────────────────
-// Step 1: category pills → Step 2: filtered agent list → Step 3: prompt suggestions
 
 type DiscoveryStep =
   | { phase: "idle" }
   | { phase: "agents"; category: CategoryType }
   | { phase: "prompts"; category: CategoryType; agent: AgentOption };
 
-const CategoryDiscoveryPanel: React.FC<{
+type CategoryDiscoveryPanelProps = {
   allAgents: AgentOption[];
   agentsLoading: boolean;
   onSelectPrompt: (prompt: string, agent: AgentOption) => void;
-}> = ({ allAgents, agentsLoading, onSelectPrompt }) => {
+  onAgentSelect?: (agent: AgentOption) => void;
+};
+
+const CategoryDiscoveryPanel: React.FC<CategoryDiscoveryPanelProps> = ({
+  allAgents,
+  agentsLoading,
+  onSelectPrompt,
+  onAgentSelect,
+}) => {
   const [step, setStep] = useState<DiscoveryStep>({ phase: "idle" });
 
   const categories: CategoryType[] = ["chat", "research", "code", "image", "video", "general"];
@@ -483,6 +485,7 @@ const CategoryDiscoveryPanel: React.FC<{
 
   const handleAgentClick = (agent: AgentOption) => {
     if (step.phase === "agents") {
+      onAgentSelect?.(agent);                    // ← THIS IS THE IMPORTANT LINE
       setStep({ phase: "prompts", category: step.category, agent });
     }
   };
@@ -504,7 +507,6 @@ const CategoryDiscoveryPanel: React.FC<{
 
   return (
     <div className="w-full max-w-xl space-y-3">
-      {/* Category pills row */}
       <div className="flex flex-wrap justify-center gap-1.5">
         {categories.map(cat => {
           const { emoji, label } = catMeta(cat);
@@ -526,10 +528,8 @@ const CategoryDiscoveryPanel: React.FC<{
         })}
       </div>
 
-      {/* Expanded panel */}
       {step.phase !== "idle" && (
         <div className="rounded-2xl border border-zap-bg-alt bg-zap-bg-raised overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
-          {/* Panel header */}
           <div className="flex items-center gap-2 px-4 py-2.5 border-b border-zap-bg-alt">
             {step.phase === "prompts" && (
               <button
@@ -554,7 +554,6 @@ const CategoryDiscoveryPanel: React.FC<{
             </button>
           </div>
 
-          {/* Agent list */}
           {step.phase === "agents" && (
             <div className="max-h-56 overflow-y-auto overscroll-contain divide-y divide-zap-border/10">
               {agentsLoading ? (
@@ -576,10 +575,7 @@ const CategoryDiscoveryPanel: React.FC<{
                       onClick={() => handleAgentClick(agent)}
                       className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-zap-bg-alt/60 transition-colors group border-b border-zap-bg-alt last:border-b-0"
                     >
-                      {/* Avatar */}
                       <AgentAvatar agent={agent} size={30} fontSize={10} />
-
-                      {/* Agent Info - takes available space */}
                       <div className="flex-1 min-w-0">
                         <p className="font-body text-[12px] font-semibold text-zap-ink truncate">
                           {agent.name}
@@ -588,8 +584,6 @@ const CategoryDiscoveryPanel: React.FC<{
                           @{agent.handle} · {agent.provider}
                         </p>
                       </div>
-
-                      {/* Price + Chevron */}
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="font-mono text-[10px] text-zap-ink-faint">
                           ${price.toFixed(2)}/req
@@ -607,18 +601,14 @@ const CategoryDiscoveryPanel: React.FC<{
             </div>
           )}
 
-          {/* Prompt suggestions */}
           {step.phase === "prompts" && (
             <div className="divide-y divide-zinc-800/50">
-              {/* Selected agent mini header */}
               <div className="flex items-center gap-2.5 px-4 py-2.5 bg-zap-bg-alt/30 border-b border-zap-bg-alt/70">
                 <AgentAvatar agent={step.agent} size={20} fontSize={8} />
                 <span className="font-body text-[11px] text-zap-ink-muted">
                   {step.agent.name} · ${priceForAgent(step.agent).toFixed(2)}/req
                 </span>
               </div>
-
-              {/* Prompts */}
               {prompts.map((prompt, i) => (
                 <button
                   key={i}
@@ -662,7 +652,6 @@ const PaymentGateCard: React.FC<{
 
   return (
     <div className="rounded-2xl border border-zap-bg-alt bg-zap-bg-alt overflow-hidden max-w-sm">
-      {/* Header */}
       <div className="px-4 py-3 border-b border-zap-bg-alt flex items-center gap-2.5">
         <Zap size={13} className="text-zap-brand" strokeWidth={2.5} />
         <p className="font-body text-[11px] font-semibold uppercase tracking-[0.12em] text-zap-brand">
@@ -670,7 +659,6 @@ const PaymentGateCard: React.FC<{
         </p>
       </div>
 
-      {/* Agent Info */}
       <div className="px-4 pt-5 pb-3 flex items-center gap-3 border-b border-zap-bg-alt">
         <AgentAvatar agent={agent} size={38} fontSize={13} />
         <div className="min-w-0 flex-1">
@@ -683,9 +671,7 @@ const PaymentGateCard: React.FC<{
         </div>
       </div>
 
-      {/* Content */}
       <div className="px-4 pb-6 pt-4 space-y-4">
-        {/* Price */}
         <div className="flex items-baseline gap-1.5">
           <span className="font-body text-3xl font-bold text-zap-ink">
             ${price.toFixed(2)}
@@ -693,20 +679,17 @@ const PaymentGateCard: React.FC<{
           <span className="font-body text-sm text-zap-ink-muted">USDC · Stellar</span>
         </div>
 
-        {/* Description */}
         <p className="font-body text-[11px] text-zap-ink-muted leading-relaxed">
           Unlocked via{" "}
           <strong className="text-zap-ink">{agent.name}</strong> — payment confirmed on-chain.
         </p>
 
-        {/* Error Message */}
         {error && (
           <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-3 py-2.5">
             <p className="font-body text-xs text-red-500">{error}</p>
           </div>
         )}
 
-        {/* Action Buttons */}
         <div className="flex gap-2 pt-2">
           <button
             type="button"
@@ -755,7 +738,6 @@ const TxConfirmedBubble: React.FC<{ txHash: string; agentName: string; price: nu
         <p className="font-body text-[12px] font-semibold text-emerald-600 dark:text-emerald-400">
           Payment confirmed — ${price.toFixed(2)} USDC sent to {agentName}
         </p>
-        {/* <p className="font-mono text-[9px] text-zap-ink-faint break-all">{txHash}</p> */}
         <div className="flex gap-2 pt-1">
           <button
             type="button"
@@ -808,6 +790,7 @@ const AgentResponseBubble: React.FC<{
             {emoji} {label}
           </span>
         </div>
+
         {msg.mediaType === "video" && msg.mediaSrc ? (
           <video
             src={msg.mediaSrc}
@@ -823,12 +806,16 @@ const AgentResponseBubble: React.FC<{
             src={msg.mediaSrc}
             alt="AI generated"
             className="w-full rounded-xl max-h-64 object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
           />
         ) : (
           <div className="rounded-2xl rounded-tl-sm bg-zap-bg-raised border border-zap-bg-alt px-4 py-3 text-zap-ink">
             <MarkdownRenderer content={msg.content} />
           </div>
         )}
+
         <p className="font-mono text-[9px] text-zap-ink-faint">
           {timeLabel(msg.timestamp)}
           {msg.txHash && ` · TX ${shortHash(msg.txHash)}`}
@@ -920,8 +907,111 @@ const VoiceInputBar: React.FC<{
   </div>
 );
 
+// ─── Agent Selector Dropdown ──────────────────────────────────────────────────
+// FIX 8: Replaces the static text label with a full agent picker dropdown
+
+// ─── Agent Selector Dropdown ──────────────────────────────────────────────────
+
+const AgentSelectorDropdown: React.FC<{
+  selectedAgent: AgentOption;
+  allAgents: AgentOption[];
+  onSelect: (agent: AgentOption) => void;
+  disabled?: boolean;
+}> = ({ selectedAgent, allAgents, onSelect, disabled }) => {
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const price = priceForAgent(selectedAgent);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-zap-bg-alt disabled:opacity-40 group"
+      >
+        <span
+          className="h-1.5 w-1.5 rounded-full shrink-0"
+          style={{ background: providerColor(selectedAgent.provider) }}
+        />
+        <span className="font-body text-[11px] text-zap-ink-muted truncate max-w-[80px] group-hover:text-zap-ink transition-colors">
+          {selectedAgent.name}
+        </span>
+        <span className="font-mono text-[10px] text-zap-ink-faint">
+          ${price.toFixed(2)}
+        </span>
+        <ChevronDown
+          size={10}
+          strokeWidth={2}
+          className={`text-zap-ink-faint transition-transform duration-150 ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {/* FIXED DROPDOWN - Portal-like behavior with high z-index */}
+      {open && (
+        <div
+          className="fixed z-[9999] mt-1 w-56 rounded-2xl border border-zap-bg-alt bg-zap-bg-raised shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-100"
+          style={{
+            top: "auto",           // we'll calculate position manually if needed
+            left: "auto",
+          }}
+        >
+          <div className="px-3 py-2 border-b border-zap-bg-alt">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-zap-ink-faint">
+              Select Agent
+            </p>
+          </div>
+          <div className="max-h-52 overflow-y-auto overscroll-contain">
+            {allAgents.map(agent => {
+              const agentPrice = priceForAgent(agent);
+              const isSelected = agent.id === selectedAgent.id;
+              return (
+                <button
+                  key={agent.id}
+                  type="button"
+                  onClick={() => { onSelect(agent); setOpen(false); }}
+                  className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-zap-bg-alt/70 ${isSelected ? "bg-zap-brand/8" : ""}`}
+                >
+                  <AgentAvatar agent={agent} size={22} fontSize={8} />
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-body text-[11px] font-semibold truncate ${isSelected ? "text-zap-brand" : "text-zap-ink"}`}>
+                      {agent.name}
+                    </p>
+                    <p className="font-body text-[9px] text-zap-ink-faint truncate">
+                      {agent.provider}
+                    </p>
+                  </div>
+                  <div className="shrink-0 flex items-center gap-1">
+                    <span className="font-mono text-[9px] text-zap-ink-faint">
+                      ${agentPrice.toFixed(2)}
+                    </span>
+                    {isSelected && (
+                      <CheckCircle2 size={10} strokeWidth={2.5} className="text-zap-brand" />
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 // ─── Input Bar ────────────────────────────────────────────────────────────────
-// AgentSelector removed — replaced with plain text agent name + price display
 
 interface InputBarProps {
   value: string;
@@ -935,6 +1025,8 @@ interface InputBarProps {
   voiceState: "idle" | "connecting" | "listening" | "processing";
   transcript: string;
   selectedAgent: AgentOption;
+  allAgents: AgentOption[];
+  onAgentSelect: (agent: AgentOption) => void;
   textareaRef: React.RefObject<HTMLTextAreaElement>;
   fileInputRef: React.RefObject<HTMLInputElement>;
   placeholder?: string;
@@ -943,18 +1035,23 @@ interface InputBarProps {
 const InputBar: React.FC<InputBarProps> = ({
   value, onChange, onSend, onVoiceToggle, onImageAttach, onImageRemove,
   busy, attachedImage, voiceState, transcript,
-  selectedAgent, textareaRef, fileInputRef, placeholder = "Ask anything…",
+  selectedAgent, allAgents, onAgentSelect,
+  textareaRef, fileInputRef, placeholder = "Ask anything…",
 }) => {
   const isVoice = voiceState !== "idle";
-  const price = priceForAgent(selectedAgent);
-
 
   return (
-    <div className="w-full">
+    <div className="w-full relative">
+
+      {/* Attached Image Preview */}
       {attachedImage && (
         <div className="mb-2 flex items-center gap-2">
           <div className="relative h-12 w-12 rounded-lg overflow-hidden">
-            <img src={attachedImage} alt="Attached" className="h-full w-full object-cover" />
+            <img
+              src={attachedImage}
+              alt="Attached"
+              className="h-full w-full object-cover"
+            />
             <button
               type="button"
               onClick={onImageRemove}
@@ -966,7 +1063,10 @@ const InputBar: React.FC<InputBarProps> = ({
           <span className="font-body text-xs text-zap-ink-muted">Image attached</span>
         </div>
       )}
+
+      {/* Main Input Card */}
       <div className="rounded-2xl bg-zap-bg-raised overflow-hidden focus-within:ring-1 focus-within:ring-zap-brand/20 transition-all">
+
         {isVoice ? (
           <VoiceInputBar
             state={voiceState as "connecting" | "listening" | "processing"}
@@ -977,16 +1077,30 @@ const InputBar: React.FC<InputBarProps> = ({
           <textarea
             ref={textareaRef}
             value={value}
-            onChange={e => onChange(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); } }}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                onSend();
+              }
+            }}
             placeholder={placeholder}
             rows={1}
             disabled={busy}
-            className="w-full resize-none bg-transparent px-4 pt-3.5 pb-3 font-body text-sm text-zap-ink placeholder:text-zap-ink-faint outline-none border-none ring-0 focus:ring-0 focus:outline-none"
+            className="w-full resize-none bg-transparent px-4 pt-3.5 pb-3 
+                     font-body text-sm text-zap-ink 
+                     placeholder:text-zap-ink-faint 
+                     outline-none border-none ring-0 focus:ring-0 focus:outline-none
+                     appearance-none"
+            spellCheck={false}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
           />
         )}
+
+        {/* Bottom Bar */}
         <div className="flex items-center justify-between gap-2 px-3 pb-3 pt-1">
-          {/* Left: image + voice */}
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -996,31 +1110,33 @@ const InputBar: React.FC<InputBarProps> = ({
             >
               <ImageIcon size={15} strokeWidth={1.75} />
             </button>
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onImageAttach} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={onImageAttach}
+            />
+
             <button
               type="button"
               onClick={onVoiceToggle}
               disabled={busy}
-              className={`rounded-lg p-2 transition-colors disabled:opacity-40 ${isVoice ? "text-zap-brand" : "text-zap-ink-faint hover:text-zap-ink hover:bg-zap-bg-alt"}`}
+              className={`rounded-lg p-2 transition-colors disabled:opacity-40 ${isVoice ? "text-zap-brand" : "text-zap-ink-faint hover:text-zap-ink hover:bg-zap-bg-alt"
+                }`}
             >
               {isVoice ? <MicOff size={15} strokeWidth={1.75} /> : <Mic size={15} strokeWidth={1.75} />}
             </button>
           </div>
 
-          {/* Right: agent label (plain text) + send */}
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-1.5">
-              <span
-                className="h-1.5 w-1.5 rounded-full shrink-0"
-                style={{ background: providerColor(selectedAgent.provider) }}
-              />
-              <span className="font-body text-[11px] text-zap-ink-muted truncate max-w-[80px]">
-                {selectedAgent.name}
-              </span>
-              <span className="font-mono text-[10px] text-zap-ink-faint">
-                ${price.toFixed(2)}
-              </span>
-            </div>
+          {/* Agent Selector + Send */}
+          <div className="flex items-center gap-2.5 relative z-50">   {/* ← Important: z-50 + relative */}
+            <AgentSelectorDropdown
+              selectedAgent={selectedAgent}
+              allAgents={allAgents}
+              onSelect={onAgentSelect}
+              disabled={busy}
+            />
 
             <button
               type="button"
@@ -1033,10 +1149,30 @@ const InputBar: React.FC<InputBarProps> = ({
           </div>
         </div>
       </div>
-      <p className="mt-2 text-center font-body text-[10px] text-zap-ink-faint">Powered by x402 on Stellar</p>
     </div>
   );
 };
+
+// ─── Mission Banner ───────────────────────────────────────────────────────────
+
+const MissionBanner: React.FC = () => (
+  <div className="w-full max-w-xl">
+    <div className="rounded-2xl border border-zap-bg-alt bg-zap-bg-raised/50 px-5 py-4">
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { stat: "< 1s", label: "Payments on Stellar" },
+          { stat: "Pay/req", label: "No subscription" },
+          { stat: "On-chain", label: "Every receipt" },
+        ].map(({ stat, label }) => (
+          <div key={stat} className="text-center">
+            <p className="font-body text-[13px] font-semibold text-zap-ink">{stat}</p>
+            <p className="font-body text-[9px] text-zap-ink-faint mt-0.5">{label}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -1047,6 +1183,8 @@ const TerminalChatPage: React.FC = () => {
   const profile = useProfileStore(s => s.profile);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const { selectedAgent, setSelectedAgent } = useAgentStore();
 
   const { agents: rawAgents, loading: agentsLoading } = useOnChainAgents({ onlyAgents: true });
   const allAgents: AgentOption[] = rawAgents.length > 0
@@ -1059,7 +1197,6 @@ const TerminalChatPage: React.FC = () => {
 
   const [conversations, setConversations] = useState<Conversation[]>(loadConversations);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
-  const [selectedAgent, setSelectedAgent] = useState<AgentOption>(CLAUDE_DEFAULT);
 
   const [pendingPayment, setPendingPayment] = useState<{
     convId: string;
@@ -1070,9 +1207,7 @@ const TerminalChatPage: React.FC = () => {
     history: { role: string; content: string }[];
   } | null>(null);
 
-
-  const currentAgent =
-    pendingPayment?.agent || selectedAgent;
+  const currentAgent = pendingPayment?.agent || selectedAgent;
   const [input, setInput] = useState("");
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -1082,6 +1217,8 @@ const TerminalChatPage: React.FC = () => {
   const [paying, setPaying] = useState(false);
   const [fallbackIds, setFallbackIds] = useState<Set<string>>(new Set());
 
+  const [fromZap, setFromZap] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1089,12 +1226,16 @@ const TerminalChatPage: React.FC = () => {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const transcriptRef = useRef("");
+  const didHandleStateRef = useRef(false);
 
+  // FIX 7: isCenterState only true when there's no active conversation ID at all.
+  // Once a convId is set (even with pending payment), we stay in chat view.
+  // We still show the center layout when there are literally no messages AND no
+  // pending payment — so a fresh start still looks clean.
   const activeConv = conversations.find(c => c.id === activeConvId) ?? null;
-  const isCenterState = !activeConv || activeConv.messages.length === 0;
+  const isCenterState = !activeConvId && !pendingPayment;
 
   useEffect(() => { saveConversations(conversations); }, [conversations]);
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeConv?.messages.length, busy, pendingPayment]);
@@ -1109,21 +1250,92 @@ const TerminalChatPage: React.FC = () => {
       agent?: AgentOption;
       resumeConvId?: string;
       newChat?: boolean;
+      promptText?: string;
+      focusInput?: boolean;
+      comparePrompt?: string;
     } | null;
+
     if (!state) return;
-    if (state.newChat) {
+    if (didHandleStateRef.current) return;
+    didHandleStateRef.current = true;
+
+    if (state.newChat && !state.agent && !state.resumeConvId) {
       setPendingPayment(null);
       setPaymentError(null);
       setActiveConvId(null);
       setInput("");
       setAttachedImage(null);
       setBusy(false);
+      setFromZap(false);
       return;
     }
-    if (state.agent) setSelectedAgent(state.agent);
-    if (state.resumeConvId) setActiveConvId(state.resumeConvId);
+
+    if (state.resumeConvId) {
+      setActiveConvId(state.resumeConvId);
+      const conv = conversations.find(c => c.id === state.resumeConvId);
+      if (conv && state.agent) {
+        setSelectedAgent(state.agent);
+      } else if (conv?.agentId) {
+        const savedAgent = allAgents.find(a => a.id === conv.agentId);
+        if (savedAgent) setSelectedAgent(savedAgent);
+      }
+      if (state.comparePrompt) {
+        if (state.agent) {
+          setSelectedAgent(state.agent);
+          setTimeout(() => {
+            void handleSendDirect(state.comparePrompt!, state.agent!);
+          }, 50);
+        }
+      }
+      return;
+    }
+
+    if (state.agent) {
+      setSelectedAgent(state.agent);
+    }
+
+    if (state.promptText && state.agent) {
+      setFromZap(true);
+      setPendingPayment(null);
+      setPaymentError(null);
+      setActiveConvId(null);
+      setInput("");
+      setAttachedImage(null);
+      setBusy(false);
+      setTimeout(() => {
+        void handleSendDirect(state.promptText!, state.agent!);
+      }, 50);
+      return;
+    }
+
+    if (state.focusInput) {
+      setTimeout(() => textareaRef.current?.focus(), 100);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
 
+  // NEW: Stop voice recorder immediately when PaymentGateCard appears
+useEffect(() => {
+  if (pendingPayment && voiceState !== "idle") {
+    voiceLoopRef.current = false;
+    recognitionRef.current?.stop();
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+    }
+    window.speechSynthesis?.cancel();
+
+    setVoiceState("idle");
+    setTranscript("");
+    transcriptRef.current = "";
+  }
+}, [pendingPayment, voiceState]);
+
+  useEffect(() => {
+    didHandleStateRef.current = false;
+  }, [location.key]);
+
+  // FIX 7: addMessageToConv uses functional updater — always works even
+  // when called immediately after setConversations in the same render cycle.
   const addMessageToConv = useCallback((convId: string, msg: ConvMessage) => {
     setConversations(prev => prev.map(c => {
       if (c.id !== convId) return c;
@@ -1145,7 +1357,7 @@ const TerminalChatPage: React.FC = () => {
     setInput("");
     setAttachedImage(null);
     setBusy(false);
-    saveActiveConvId(null);
+    setFromZap(false);
     saveDraftInput("");
   }, []);
 
@@ -1161,10 +1373,84 @@ const TerminalChatPage: React.FC = () => {
     setPaymentError(null);
   }, []);
 
+  // FIX 7: Create conversation WITH the user message baked in so that
+  // activeConv.messages.length is always >= 1 before the payment gate appears.
+  // This means declining payment never collapses back to center state.
+  const handleSendDirect = useCallback(async (text: string, agent: AgentOption) => {
+    if (!text.trim() || busy) return;
+    if (!connected) { openWalletConnect(); return; }
+
+    // Stop voice immediately 
+    if (voiceState !== "idle") {
+      voiceLoopRef.current = false;
+      recognitionRef.current?.stop();
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      window.speechSynthesis?.cancel();
+      setVoiceState("idle");
+      setTranscript("");
+      transcriptRef.current = "";
+    }
+
+    const category =
+      agent.category && agent.category !== "general"
+        ? (agent.category as CategoryType)
+        : classifyCategory(text);
+
+    setInput("");
+    saveDraftInput("");
+    setAttachedImage(null);
+
+    const convId = uid();
+    const userMsg: ConvMessage = {
+      id: uid(),
+      role: "user",
+      content: text,
+      agentId: agent.id,
+      agentName: agent.name,
+      agentProvider: agent.provider,
+      timestamp: Date.now(),
+      category,
+      phase: "pending_payment",
+    };
+
+    // FIX 7: Include userMsg in the conversation at creation time
+    const newConv: Conversation = {
+      id: convId,
+      title: text.slice(0, 50) + (text.length > 50 ? "…" : ""),
+      category,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      messages: [userMsg],
+      usedAgentIds: [],
+      agentId: agent.id,
+    };
+    setConversations(prev => [newConv, ...prev]);
+    setActiveConvId(convId);
+
+    const history: { role: string; content: string }[] = [
+      { role: "user", content: text },
+    ];
+
+    queueRequest(convId, agent, text, category, history);
+  }, [busy, connected, openWalletConnect, queueRequest]);
+
   const handleSend = useCallback(async (overrideText?: string, overrideAgent?: AgentOption) => {
     const text = (overrideText ?? input).trim();
     if (!text || busy) return;
     if (!connected) { openWalletConnect(); return; }
+
+    // ←←← ADD THIS BLOCK: Stop voice immediately when sending
+    if (voiceState !== "idle") {
+      voiceLoopRef.current = false;
+      recognitionRef.current?.stop();
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      window.speechSynthesis?.cancel();
+
+      setVoiceState("idle");
+      setTranscript("");
+      transcriptRef.current = "";
+    }
+    // ←←← END OF VOICE CLEANUP
 
     const agent = overrideAgent ?? selectedAgent;
     const category =
@@ -1176,6 +1462,19 @@ const TerminalChatPage: React.FC = () => {
     saveDraftInput("");
     setAttachedImage(null);
 
+    const msgContent = attachedImage ? `[Image attached]\n${text}` : text;
+    const userMsg: ConvMessage = {
+      id: uid(),
+      role: "user",
+      content: msgContent,
+      agentId: agent.id,
+      agentName: agent.name,
+      agentProvider: agent.provider,
+      timestamp: Date.now(),
+      category,
+      phase: "pending_payment",
+    };
+
     let convId = activeConvId;
     if (!convId) {
       convId = uid();
@@ -1185,48 +1484,45 @@ const TerminalChatPage: React.FC = () => {
         category,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        messages: [],
+        messages: [userMsg],
         usedAgentIds: [],
+        agentId: agent.id,
       };
       setConversations(prev => [newConv, ...prev]);
       setActiveConvId(convId);
+    } else {
+      addMessageToConv(convId, userMsg);
     }
-
-    const userMsg: ConvMessage = {
-      id: uid(),
-      role: "user",
-      content: attachedImage ? `[Image attached]\n${text}` : text,
-      agentId: agent.id,
-      agentName: agent.name,
-      agentProvider: agent.provider,
-      timestamp: Date.now(),
-      category,
-      phase: "pending_payment",
-    };
-    addMessageToConv(convId, userMsg);
 
     const history: { role: string; content: string }[] = [
       { role: "user", content: text },
     ];
 
     queueRequest(convId, agent, text, category, history);
-  }, [input, busy, connected, selectedAgent, activeConvId, attachedImage, openWalletConnect, addMessageToConv, queueRequest]);
-
-  // ─── Inside TerminalChatPage component ─────────────────────────────────────
+  }, [input, busy, connected, selectedAgent, activeConvId, attachedImage, openWalletConnect, addMessageToConv, queueRequest, voiceState]);
 
   const handleDiscoverySelect = useCallback((
     prompt: string,
     agent: AgentOption
   ) => {
-    // Force a completely fresh conversation (same as "New chat" button)
     startNewConversation();
-    setSelectedAgent(agent);
 
-    // Tiny delay to let state settle, then send
+    // Stop voice if active
+    if (voiceState !== "idle") {
+      voiceLoopRef.current = false;
+      recognitionRef.current?.stop();
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      window.speechSynthesis?.cancel();
+      setVoiceState("idle");
+      setTranscript("");
+      transcriptRef.current = "";
+    }
+
+    setSelectedAgent(agent);
     setTimeout(() => {
       void handleSend(prompt, agent);
     }, 10);
-  }, [startNewConversation, handleSend]);
+  }, [startNewConversation, handleSend, setSelectedAgent, voiceState]);
 
   const handleConfirmPay = useCallback(async () => {
     if (!pendingPayment || paying) return;
@@ -1312,6 +1608,8 @@ const TerminalChatPage: React.FC = () => {
   }, [pendingPayment, paying, payToAsk, addMessageToConv, conversations]);
 
   const handleDeclinePay = useCallback(() => {
+    // FIX 7: Only clear the payment gate — do NOT touch activeConvId.
+    // The conversation (with its user message) stays visible in chat view.
     setPendingPayment(null);
     setPaymentError(null);
   }, []);
@@ -1338,17 +1636,6 @@ const TerminalChatPage: React.FC = () => {
       )
       .slice(0, 5);
   }, [allAgents]);
-
-  const speak = useCallback((text: string, onEnd?: () => void) => {
-    if (!window.speechSynthesis) { onEnd?.(); return; }
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text.slice(0, 600));
-    u.rate = 1.05;
-    const t = setTimeout(() => onEnd?.(), 15000);
-    u.onend = () => { clearTimeout(t); onEnd?.(); };
-    u.onerror = () => { clearTimeout(t); onEnd?.(); };
-    window.speechSynthesis.speak(u);
-  }, []);
 
   const startVoiceRound = useCallback(async () => {
     const SR = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -1387,19 +1674,14 @@ const TerminalChatPage: React.FC = () => {
       recognitionRef.current?.stop();
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       window.speechSynthesis?.cancel();
-      setVoiceState("idle"); setTranscript(""); transcriptRef.current = "";
+      setVoiceState("idle");
+      setTranscript("");
+      transcriptRef.current = "";
     } else {
       voiceLoopRef.current = true;
       void startVoiceRound();
     }
   }, [voiceState, startVoiceRound]);
-
-  const [greeting] = useState(() => {
-    const h = new Date().getHours();
-    const time = h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
-    const name = profile?.displayName?.split(" ")[0] ?? profile?.username ?? "";
-    return `Good ${time}${name ? `, ${name}` : ""}`;
-  });
 
   const renderMessage = (msg: ConvMessage, conv: Conversation, idx: number) => {
     if (msg.content.startsWith("__TX_CONFIRMED__:")) {
@@ -1467,27 +1749,29 @@ const TerminalChatPage: React.FC = () => {
     voiceState,
     transcript,
     selectedAgent,
+    allAgents,
+    onAgentSelect: setSelectedAgent,
     textareaRef,
     fileInputRef,
   };
 
   return (
     <div className="h-screen flex flex-col">
-      <div
-        className={`mx-auto w-full max-w-2xl flex flex-col flex-1 ${isCenterState ? "min-h-0" : "min-h-0"
-          }`}
-      >
+      <div className="mx-auto w-full max-w-2xl flex flex-col flex-1 min-h-0">
+
         {/* ── CENTER STATE ── */}
         {isCenterState && (
           <div className="flex flex-col items-center justify-center flex-1 text-center gap-6">
-            <div>
-              <h1 className="font-display text-3xl font-semibold text-zap-ink tracking-tight mb-1">
-                {greeting}
-              </h1>
-              <p className="font-body text-sm text-zap-ink-muted">
-                Pay-per-query AI. One prompt · One payment · On-chain receipt.
-              </p>
-            </div>
+            {!fromZap && (
+              <div>
+                <h1 className="font-display text-3xl font-semibold text-zap-ink tracking-tight mb-1">
+                  Zap402
+                </h1>
+                <p className="font-body text-sm text-zap-ink-muted">
+                  Pay-per-query AI. One prompt · One payment · On-chain receipt.
+                </p>
+              </div>
+            )}
 
             <div className="w-full max-w-xl">
               <InputBar
@@ -1497,42 +1781,44 @@ const TerminalChatPage: React.FC = () => {
               />
             </div>
 
-            {/* Category discovery: pills → agents → prompts */}
             <CategoryDiscoveryPanel
               allAgents={allAgents}
               agentsLoading={agentsLoading}
               onSelectPrompt={handleDiscoverySelect}
             />
+            <p className="mt-20 text-center font-body text-[10px] text-zap-ink-faint">Powered by x402 on Stellar</p>
           </div>
         )}
 
         {/* ── ACTIVE CHAT ── */}
-        {!isCenterState && activeConv && (
+        {!isCenterState && (
           <div className="flex flex-col flex-1 min-h-0 pt-20">
-            <div className="flex items-center gap-3 py-3 border-b border-zap-bg-alt mb-4 shrink-0">
-              <div className="flex-1 min-w-0">
-                <p className="font-body text-[13px] font-semibold text-zap-ink uppercase truncate">
-                  {activeConv.title}
-                </p>
-                <p className="font-body text-[10px] text-zap-ink-faint">
-                  {catMeta(activeConv.category).emoji} {catMeta(activeConv.category).label}
-                  {" · "}
-                  {activeConv.usedAgentIds.length} agent{activeConv.usedAgentIds.length !== 1 ? "s" : ""} used
-                </p>
+            {activeConv && (
+              <div className="flex items-center gap-3 py-3 border-b border-zap-bg-alt mb-4 shrink-0">
+                <div className="flex-1 min-w-0">
+                  <p className="font-body text-[13px] font-semibold text-zap-ink uppercase truncate">
+                    {activeConv.title}
+                  </p>
+                  <p className="font-body text-[10px] text-zap-ink-faint">
+                    {catMeta(activeConv.category).emoji} {catMeta(activeConv.category).label}
+                    {" · "}
+                    {activeConv.usedAgentIds.length} agent{activeConv.usedAgentIds.length !== 1 ? "s" : ""} used
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={startNewConversation}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-zap-bg-alt bg-zap-bg-alt px-3 py-1.5 font-body text-[14px] text-zap-ink-muted hover:border-zap-bg-alt hover:text-zap-ink transition-all"
+                >
+                  <Plus size={14} strokeWidth={2} /> New
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={startNewConversation}
-                className="inline-flex items-center gap-1.5 rounded-full border border-zap-bg-alt bg-zap-bg-alt px-3 py-1.5 font-body text-[14px] text-zap-ink-muted hover:border-zap-bg-alt hover:text-zap-ink transition-all"
-              >
-                <Plus size={14} strokeWidth={2} /> New
-              </button>
-            </div>
+            )}
 
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain pb-4 space-y-4">
-              {activeConv.messages.map((msg, idx) => renderMessage(msg, activeConv, idx))}
+              {activeConv?.messages.map((msg, idx) => renderMessage(msg, activeConv, idx))}
 
-              {pendingPayment && pendingPayment.convId === activeConv.id && (
+              {pendingPayment && (!activeConvId || pendingPayment.convId === activeConvId) && (
                 <div className="flex gap-3 items-start">
                   <div className="shrink-0 h-7 w-7 rounded-full bg-zap-brand flex items-center justify-center mt-0.5">
                     <Zap size={11} strokeWidth={2.5} className="text-black" />

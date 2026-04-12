@@ -1,3 +1,9 @@
+// src/pages/ZapPage.tsx
+// FIXES:
+// 1. "Try agent" button starts fresh conversation with agent pre-set (no welcome message)
+// 2. Sample prompt clicks send promptText to chat so conversation starts immediately
+// 3. Agent synced globally via useAgentStore so it persists across pages
+
 import React, {
   useCallback,
   useEffect,
@@ -9,17 +15,14 @@ import {
   ArrowLeft,
   Zap,
   ExternalLink,
-  Star,
   CheckCircle2,
   ChevronRight,
   Activity,
   Code2,
   Image,
   MessageSquare,
-  Search,
   Video,
   BarChart2,
-  Clock,
   Shield,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -41,6 +44,7 @@ import { collectCreatorSocialLinks } from "@/utils/creatorSocialLinks";
 import { useProfileStore } from "@/state/profileStore";
 import { useWalletStore } from "@/state/walletStore";
 import { stellarExpertAccountUrl, truncateAddress } from "@/utils/format";
+import { useAgentStore } from "@/state/agentStore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,7 +63,7 @@ function providerColor(provider: string): string {
   if (p.includes("runway")) return "#f97316";
   if (p.includes("stability")) return "#84cc16";
   if (p.includes("meta") || p.includes("llama")) return "#60a5fa";
-  return "#f59e0b"; // default to amber
+  return "#f59e0b";
 }
 
 function detectCategory(bio: string, displayName: string): CategoryType {
@@ -89,7 +93,7 @@ function detectProvider(bio: string, displayName: string): string {
 
 function priceForCategory(cat: CategoryType): number {
   const prices: Record<CategoryType, number> = {
-    chat: 0.30, research: 0.50, code: 0.40, image: 0.80, video: 1.50, general: 0.30,
+    chat: 0.10, research: 0.30, code: 0.20, image: 0.50, video: 0.85, general: 0.10,
   };
   return prices[cat];
 }
@@ -157,8 +161,7 @@ function buildCapabilities(category: CategoryType, bio: string): string[] {
   };
 
   const caps = [...base[category]];
-  // Add bio-specific capability if detected
-  if (seed.includes("stelllar") || seed.includes("blockchain") || seed.includes("web3")) {
+  if (seed.includes("stellar") || seed.includes("blockchain") || seed.includes("web3")) {
     caps.push("Web3 & blockchain-native tasks");
   }
   if (seed.includes("nigeria") || seed.includes("africa") || seed.includes("lagos")) {
@@ -201,32 +204,58 @@ const SAMPLE_PROMPTS: Record<CategoryType, string[]> = {
 
 // ─── Try Agent CTA ────────────────────────────────────────────────────────────
 
-// ─── Try Agent CTA ────────────────────────────────────────────────────────────
-
-interface TryAgentCTAProps {
-  agentOption: {
-    id: string;
-    name: string;
-    handle: string;
-    provider: string;
-    category: string;
-    imageUrl?: string;
-    walletAddress?: string;
-    priceUsdc?: number;
-  };
-  price: number;
-  category: CategoryType;
-  navigate: (to: string, options?: any) => void;   // Only this is needed
+interface AgentOptionShape {
+  id: string;
+  name: string;
+  handle: string;
+  provider: string;
+  category: string;
+  imageUrl?: string;
+  walletAddress?: string;
+  priceUsdc?: number;
 }
 
-const TryAgentCTA: React.FC<TryAgentCTAProps> = ({ 
-  agentOption, 
-  price, 
-  category, 
-  navigate 
+interface TryAgentCTAProps {
+  agentOption: AgentOptionShape;
+  price: number;
+  category: CategoryType;
+  navigate: (to: string, options?: any) => void;
+}
+
+const TryAgentCTA: React.FC<TryAgentCTAProps> = ({
+  agentOption,
+  price,
+  category,
+  navigate
 }) => {
   const prompts = SAMPLE_PROMPTS[category];
-  const { emoji, label } = CATEGORY_META[category];
+  const { emoji } = CATEGORY_META[category];
+  const { setSelectedAgent } = useAgentStore();
+
+  // FIX: Set agent globally before navigating so it's always in sync
+  const handleTryAgent = () => {
+    setSelectedAgent(agentOption as any);
+    navigate("/terminal/chat", {
+      state: {
+        agent: agentOption,
+        newChat: true,
+        focusInput: true,
+      },
+    });
+  };
+
+  // FIX: Prompt click auto-sends the message (promptText triggers auto-send in TerminalChatPage)
+  const handlePromptClick = (prompt: string) => {
+    if (!agentOption) return;
+    setSelectedAgent(agentOption as any);
+    navigate("/terminal/chat", {
+      state: {
+        agent: agentOption,
+        promptText: prompt, // This triggers auto-send in TerminalChatPage
+        newChat: true,
+      },
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -246,23 +275,19 @@ const TryAgentCTA: React.FC<TryAgentCTAProps> = ({
             Chat with <strong className="text-zap-ink">{agentOption.name}</strong> on-demand. Pay only for what you use — each query is a closed deal settled on Stellar.
           </p>
           <div className="flex gap-3">
-            <Link
-              to="/terminal/chat"
-              state={{
-                agent: agentOption,
-                focusInput: true,
-                newChat: true,           // Added for consistency
-              }}
+            <button
+              type="button"
+              onClick={handleTryAgent}
               className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-zap-brand px-5 py-3 font-body text-sm font-semibold text-black transition-opacity hover:opacity-90"
             >
               <Zap size={14} strokeWidth={2.5} />
               Try {agentOption.name}
-            </Link>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Sample prompts */}
+      {/* Sample prompts — clicking auto-starts the conversation */}
       <div className="space-y-2">
         <p className="font-body text-[10px] uppercase tracking-[0.12em] text-zap-ink-faint">
           Try a prompt
@@ -273,18 +298,7 @@ const TryAgentCTA: React.FC<TryAgentCTAProps> = ({
             <button
               key={i}
               type="button"
-              onClick={() => {
-                if (!agentOption) return;
-
-                navigate("/terminal/chat", {
-                  state: {
-                    agent: agentOption,
-                    promptText: prompt,
-                    newChat: true,
-                    focusInput: true,
-                  },
-                });
-              }}
+              onClick={() => handlePromptClick(prompt)}
               className="group flex w-full items-start gap-3 rounded-xl border border-zap-bg-alt bg-zinc-950 px-4 py-3.5 hover:bg-zinc-900 hover:border-zap-bg-alt transition-all text-left"
             >
               <span className="text-lg shrink-0 mt-px">{emoji}</span>
@@ -313,7 +327,6 @@ const ZapPage: React.FC = () => {
   const username = handle?.startsWith("@") && handle.length > 1 ? handle.slice(1) : "";
   const navigate = useNavigate();
   const { connected, publicKey } = useWallet();
-  const profileFromStore = useProfileStore((s) => s.profile);
   const isRegisteredProfile = useProfileStore((s) => s.isRegistered);
   const profileLoading = useProfileStore((s) => s.loading);
   const network = useWalletStore((s) => s.network);
@@ -351,7 +364,6 @@ const ZapPage: React.FC = () => {
     loading ? "FETCHING..." : creator ? `${creator.displayName || creator.username} — ZAP402` : "NOT FOUND"
   );
 
-  // ── Derived agent data ──
   const category = useMemo(() => creator ? detectCategory(creator.bio, creator.displayName) : "chat", [creator]);
   const provider = useMemo(() => creator ? detectProvider(creator.bio, creator.displayName) : "On-chain", [creator]);
   const price = useMemo(() => priceForCategory(category), [category]);
@@ -379,7 +391,6 @@ const ZapPage: React.FC = () => {
   const explorerUrl = creator ? stellarExpertAccountUrl(creator.owner, network) : "";
   const showBack = connected && isRegisteredProfile;
 
-  // ── Guards ──
   if (!handle?.startsWith("@") || handle.length <= 1) return <NotFoundPage />;
 
   if (loading) {
@@ -403,7 +414,6 @@ const ZapPage: React.FC = () => {
     <PageContainer tag="div" maxWidth="zapMain" className="min-w-0 bg-transparent !py-6 pb-20 md:!py-8 md:pb-10">
       <div className="mx-auto w-full max-w-[720px] space-y-6">
 
-        {/* ── Back link ── */}
         {showBack && (
           <Link
             to="/terminal/discover"
@@ -414,14 +424,9 @@ const ZapPage: React.FC = () => {
           </Link>
         )}
 
-        {/* ══════════════════════════════════════
-            HERO — Agent identity card
-        ══════════════════════════════════════ */}
+        {/* HERO */}
         <div className="relative rounded-2xl overflow-hidden border border-zap-bg-alt bg-zap-bg-raised">
-          {/* Colored accent bar */}
           <div className="h-1.5 w-full" style={{ background: accentColor }} />
-
-          {/* Background radial glow */}
           <div
             className="pointer-events-none absolute inset-0 opacity-10"
             style={{ background: `radial-gradient(ellipse 80% 60% at 50% -10%, ${accentColor}, transparent)` }}
@@ -429,7 +434,6 @@ const ZapPage: React.FC = () => {
 
           <div className="relative px-6 py-6 md:px-8 md:py-8">
             <div className="flex flex-col sm:flex-row gap-5 items-start">
-              {/* Avatar */}
               <div className="relative shrink-0">
                 <div
                   className="absolute -inset-1.5 rounded-full opacity-40 blur-lg"
@@ -443,13 +447,11 @@ const ZapPage: React.FC = () => {
                   size="lg"
                   className="relative ring-2 ring-zap-surface shadow-lg"
                 />
-                {/* Live indicator */}
                 <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-emerald-500 border-2 border-zap-bg-raised flex items-center justify-center">
                   <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                 </span>
               </div>
 
-              {/* Identity */}
               <div className="flex-1 min-w-0 space-y-2">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div>
@@ -458,7 +460,6 @@ const ZapPage: React.FC = () => {
                     </h1>
                     <p className="font-body text-sm text-zap-ink-muted mt-1">@{creator.username}</p>
                   </div>
-                  {/* Category badge */}
                   <span
                     className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-body text-[11px] font-semibold shrink-0"
                     style={{ background: `${accentColor}18`, color: accentColor, border: `1px solid ${accentColor}40` }}
@@ -467,14 +468,12 @@ const ZapPage: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Bio */}
                 {creator.bio.trim() && (
                   <p className="font-body text-sm text-zap-ink/90 leading-relaxed max-w-xl">
                     {creator.bio}
                   </p>
                 )}
 
-                {/* Social + chain */}
                 <div className="flex flex-wrap items-center gap-3 pt-1">
                   {creatorSocialLinks.length > 0 && (
                     <CreatorSocialIcons links={creatorSocialLinks} xFollowers={creator.xFollowers} />
@@ -497,7 +496,6 @@ const ZapPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Stats row */}
             <div className="flex gap-3 mt-5 flex-wrap">
               {stats.map((s, i) => <StatChip key={i} label={s.label} value={s.value} />)}
               <div className="flex flex-col items-center gap-0.5 rounded-xl border border-zap-bg-alt bg-zap-bg px-4 py-3 min-w-[80px]">
@@ -512,15 +510,9 @@ const ZapPage: React.FC = () => {
           </div>
         </div>
 
-        {/* ══════════════════════════════════════
-            TWO-COLUMN: Capabilities + CTA
-        ══════════════════════════════════════ */}
+        {/* TWO-COLUMN */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 items-start">
-
-          {/* LEFT: Capabilities */}
           <div className="space-y-5">
-
-            {/* What this agent does */}
             <Card variant="editorial" padding="lg" className="space-y-4">
               <div>
                 <p className="font-body text-[10px] uppercase tracking-[0.12em] text-zap-ink-faint mb-1">
@@ -530,7 +522,6 @@ const ZapPage: React.FC = () => {
                   {catInfo.emoji} {catInfo.description}
                 </h2>
               </div>
-
               <div className="space-y-2.5">
                 {capabilities.map((cap, i) => (
                   <div key={i} className="flex items-start gap-2.5">
@@ -541,7 +532,6 @@ const ZapPage: React.FC = () => {
               </div>
             </Card>
 
-            {/* How it works */}
             <Card variant="editorial" padding="lg" className="space-y-4">
               <p className="font-body text-[10px] uppercase tracking-[0.12em] text-zap-ink-faint">
                 How it works
@@ -569,7 +559,6 @@ const ZapPage: React.FC = () => {
               </div>
             </Card>
 
-            {/* Provider info */}
             <Card variant="editorial" padding="md" className="space-y-3">
               <div className="flex items-center gap-3">
                 <span
@@ -592,7 +581,6 @@ const ZapPage: React.FC = () => {
             </Card>
           </div>
 
-          {/* RIGHT: CTA + sample prompts */}
           {agentOption && (
             <div className="lg:sticky lg:top-4">
               <TryAgentCTA

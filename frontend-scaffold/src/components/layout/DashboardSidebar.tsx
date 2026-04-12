@@ -1,3 +1,7 @@
+// src/components/dashboard/DashboardSidebar.tsx
+// FIX: Clicking "Chat" nav link no longer clears chat state.
+// Only the "New chat" button triggers a fresh conversation.
+
 import React from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
@@ -45,8 +49,16 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   };
 
   const handleNewChat = () => {
+    // FIX: New chat button explicitly passes newChat: true to reset state
     onNavigate();
     navigate("/terminal/chat", { state: { newChat: true } });
+  };
+
+  const handleChatNavClick = () => {
+    // FIX: Clicking Chat in nav just navigates — NO state passed.
+    // TerminalChatPage treats no-state navigation as "preserve current state".
+    onNavigate();
+    navigate("/terminal/chat"); // intentionally NO state
   };
 
   return (
@@ -63,19 +75,16 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
       <aside
         className={[
           "fixed left-0 top-0 z-50 flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-zap-bg-alt transition-transform duration-200 ease-out",
-
-          // Increased width
-          "w-[min(280px,90vw)]",           // Mobile: up to 280px
-          "md:w-[260px] md:min-w-[260px]", // Desktop: 260px (increased from 220px)
-
+          "w-[min(280px,90vw)]",
+          "md:w-[260px] md:min-w-[260px]",
           "md:static md:z-0 md:h-full md:shrink-0 md:max-h-none md:translate-x-0",
         ].join(" ")}
       >
         <nav
-          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 py-12" // slightly increased px-4
+          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 py-12"
           aria-label="Workspace"
         >
-          {/* ── New Chat button ── */}
+          {/* ── New Chat button — always starts fresh ── */}
           <div className="mb-4">
             <button
               type="button"
@@ -120,6 +129,26 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
                   const to = `/terminal/${item.slug}`;
                   const active = isTerminalActive(slug);
+
+                  // FIX: Chat nav uses custom handler that preserves state
+                  if (slug === "chat") {
+                    return (
+                      <button
+                        key={item.slug}
+                        type="button"
+                        onClick={handleChatNavClick}
+                        className={active ? activeLinkClass : inactiveLinkClass}
+                      >
+                        <Icon
+                          size={17}
+                          strokeWidth={active ? 2.25 : 1.75}
+                          className="shrink-0"
+                          aria-hidden
+                        />
+                        {item.label}
+                      </button>
+                    );
+                  }
 
                   return (
                     <NavLink

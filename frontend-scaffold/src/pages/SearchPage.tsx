@@ -32,7 +32,7 @@ const CATEGORY_META: Record<string, { emoji: string; label: string; color: strin
 };
 
 const PRICE_MAP: Record<string, number> = {
-  chat: 0.30, research: 0.50, code: 0.40, image: 0.80, video: 1.50, general: 0.30,
+  chat: 0.10, research: 0.30, code: 0.20, image: 0.50, video: 0.85, general: 0.10,
 };
 
 function providerColor(provider: string): string {
