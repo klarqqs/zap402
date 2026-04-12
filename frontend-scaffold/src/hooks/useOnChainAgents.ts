@@ -121,6 +121,7 @@ export function useOnChainAgents(options: UseOnChainAgentsOptions = {}) {
           };
         }),
       )
+
         .then((results) => {
           if (cancelled) return;
           const fetchedRows: OnChainAgent[] = [];
