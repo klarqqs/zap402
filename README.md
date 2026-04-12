@@ -310,4 +310,4 @@ Pay-per-query · On-chain receipts · Compare across 20+ agents · Built on Stel
 
 *Built for the Stellar Hacks hackathon.*
 
-</div>
+</div> 
