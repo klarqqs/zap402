@@ -93,7 +93,8 @@ function detectProvider(bio: string, displayName: string): string {
 
 function priceForCategory(cat: CategoryType): number {
   const prices: Record<CategoryType, number> = {
-    chat: 0.10, research: 0.30, code: 0.20, image: 0.50, video: 0.85, general: 0.10,
+    chat: 0.02, research: 0.04, code: 0.03, image: 0.08, video: 0.1, general: 0.04,
+
   };
   return prices[cat];
 }
