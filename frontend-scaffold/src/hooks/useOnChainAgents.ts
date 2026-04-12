@@ -13,6 +13,7 @@ export type OnChainAgent = {
   category: "chat" | "image" | "video" | "research" | "code";
   active: boolean;
   tag: "agent";
+  walletAddress?: string;
 };
 
 type UseOnChainAgentsOptions = {
@@ -76,6 +77,7 @@ export function useOnChainAgents(options: UseOnChainAgentsOptions = {}) {
               category: inferCategory(profile),
               active: true,
               tag: "agent" as const,
+              walletAddress: profile.owner || undefined,
             }));
           const deduped = new Map<string, OnChainAgent>();
           for (const row of rows) {
@@ -115,30 +117,31 @@ export function useOnChainAgents(options: UseOnChainAgentsOptions = {}) {
             category: inferCategory(profile),
             active: true,
             tag: "agent" as const,
+            walletAddress: profile.owner || undefined,
           };
         }),
       )
-      .then((results) => {
-        if (cancelled) return;
-        const fetchedRows: OnChainAgent[] = [];
-        for (const result of results) {
-          if (result.status === "fulfilled" && result.value) {
-            fetchedRows.push(result.value);
+        .then((results) => {
+          if (cancelled) return;
+          const fetchedRows: OnChainAgent[] = [];
+          for (const result of results) {
+            if (result.status === "fulfilled" && result.value) {
+              fetchedRows.push(result.value);
+            }
           }
-        }
-        const deduped = new Map<string, OnChainAgent>();
-        for (const row of fetchedRows) {
-          deduped.set(row.handle, row);
-        }
-        setAgents(Array.from(deduped.values()));
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        setError(e instanceof Error ? e.message : "Failed to load on-chain agents");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+          const deduped = new Map<string, OnChainAgent>();
+          for (const row of fetchedRows) {
+            deduped.set(row.handle, row);
+          }
+          setAgents(Array.from(deduped.values()));
+        })
+        .catch((e) => {
+          if (cancelled) return;
+          setError(e instanceof Error ? e.message : "Failed to load on-chain agents");
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
     };
     void load();
 

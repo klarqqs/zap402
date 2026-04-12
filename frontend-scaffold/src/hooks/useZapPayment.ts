@@ -144,7 +144,7 @@ export function useZapPayment() {
     async (
       creatorAddress: string,
       message: string,
-      priceUsdc = "0.05",
+      priceUsdc = "0.01",
     ): Promise<string | null> => {
       if (!(await ensureWallet()) || !publicKey) {
         setLayer23State({ status: "needs_wallet", error: null, txHash: null });

@@ -10,6 +10,7 @@
 //    (user message is now included in newConv.messages at creation time,
 //     so activeConv.messages.length is always > 0 before the payment gate)
 // 8. FIX: Agent selector next to send button is now a dropdown with all agents
+// 9. FIX: walletAddress is now mapped through from rawAgents so payments work
 
 import React, {
   useCallback,
@@ -44,7 +45,7 @@ import { useAgentStore, AgentOption } from "@/state/agentStore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type CategoryType = "chat" | "research" | "code" | "image" | "video" | "general";
+type CategoryType = "chat" | "research" | "code" | "image" | "video";
 
 interface ConvMessage {
   id: string;
@@ -69,7 +70,7 @@ interface Conversation {
   updatedAt: number;
   messages: ConvMessage[];
   usedAgentIds: string[];
-  agentId?: string; // persisted agent for this conversation
+  agentId?: string;
 }
 
 // ─── Category Prompt Suggestions ─────────────────────────────────────────────
@@ -110,16 +111,18 @@ const CATEGORY_PROMPTS: Record<CategoryType, string[]> = {
     "Produce a dramatic title sequence with particle effects",
     "Create a short explainer video animation concept",
   ],
-  general: [
-    "Help me think through a complex problem step by step",
-    "Summarize and extract key insights from a long document",
-    "Create a structured plan for a new project",
-    "Give me a framework for evaluating important decisions",
-    "Help me brainstorm creative solutions to a challenge",
-  ],
+  // general: [
+  //   "Help me think through a complex problem step by step",
+  //   "Summarize and extract key insights from a long document",
+  //   "Create a structured plan for a new project",
+  //   "Give me a framework for evaluating important decisions",
+  //   "Help me brainstorm creative solutions to a challenge",
+  // ],
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+
+const FALLBACK_RECIPIENT = "GAEJDS76I7ZDTJCOWPQVY777AGAQK56HNBPPWL2H64JSPPBBXMOBUYUI";
 
 const CLAUDE_DEFAULT: AgentOption = {
   id: "claude-default",
@@ -127,7 +130,7 @@ const CLAUDE_DEFAULT: AgentOption = {
   handle: "claude_agent",
   provider: "Anthropic",
   category: "research",
-  priceUsdc: 0.02,
+  priceUsdc: 0.10,
 };
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || "";
@@ -175,7 +178,7 @@ const CATEGORY_SIGNALS: Record<CategoryType, string[]> = {
     "opinion", "think", "feel", "suggest", "recommend", "idea", "plan", "strategy", "what do you",
     "can you", "could you", "please", "thanks", "tell me", "show me", "give me",
   ],
-  general: [],
+  // general: [],
 };
 
 const AI_VIDEOS = [
@@ -206,10 +209,11 @@ function classifyCategory(text: string): CategoryType {
   const lower = text.toLowerCase();
   const words = lower.split(/\s+/);
   const scores: Record<CategoryType, number> = {
-    code: 0, image: 0, video: 0, research: 0, chat: 0, general: 0,
+    code: 0, image: 0, video: 0, research: 0, chat: 0,
+    //  general: 0,
   };
   for (const [cat, signals] of Object.entries(CATEGORY_SIGNALS) as [CategoryType, string[]][]) {
-    if (cat === "general") continue;
+    // if (cat === "general") continue;
     for (const signal of signals) {
       if (lower.includes(signal)) {
         const earlyBonus = words.slice(0, 5).some(w => w.includes(signal.split(" ")[0])) ? 1.5 : 1;
@@ -221,7 +225,7 @@ function classifyCategory(text: string): CategoryType {
   if (/\bof a\b|\bstyle of\b|\bin the style\b|\ba photo\b|\ban image\b/.test(lower)) scores.image += 2;
   if (/^\s*(what|why|how|when|where|who|which|explain|describe|define)\b/.test(lower)) scores.research += 2;
   const sorted = (Object.entries(scores) as [CategoryType, number][])
-    .filter(([cat]) => cat !== "general")
+    // .filter(([cat]) => cat !== "general")
     .sort(([, a], [, b]) => b - a);
   const [topCat, topScore] = sorted[0];
   return topScore > 0 ? topCat : "chat";
@@ -282,22 +286,26 @@ function catMeta(cat: CategoryType) {
     code: { emoji: "⌨️", label: "Code", description: "Write, debug & review code" },
     image: { emoji: "🎨", label: "Image", description: "Generate visuals" },
     video: { emoji: "🎬", label: "Video", description: "Create video content" },
-    general: { emoji: "⚡", label: "General", description: "All-purpose" },
+    // general: { emoji: "⚡", label: "General", description: "All-purpose" },
   };
-  return m[cat] ?? m.general;
+  return m[cat];
+}
+
+function categoryPrice(category: string): number {
+  switch (category) {
+    case "chat":     return 0.10;
+    case "research": return 0.10;
+    case "code":     return 0.15;
+    case "image":    return 0.50;
+    case "video":    return 0.75;
+    default:         return 0.10;
+  }
 }
 
 function priceForAgent(agent: AgentOption): number {
   if (agent.priceUsdc) return agent.priceUsdc;
-  const p = agent.provider.toLowerCase();
-  if (p.includes("anthropic")) return 0.02;
-  if (p.includes("openai")) return 0.02;
-  if (p.includes("google")) return 0.02;
-  if (p.includes("midjourney") || p.includes("dall")) return 0.08;
-  if (p.includes("runway") || p.includes("sora") || p.includes("pika")) return 0.1;
-  return 0.30;
+  return categoryPrice(agent.category ?? "general");
 }
-
 // ─── localStorage Persistence ─────────────────────────────────────────────────
 
 const STORAGE_KEY = "zap402_conversations_v2";
@@ -461,13 +469,13 @@ const CategoryDiscoveryPanel: React.FC<CategoryDiscoveryPanelProps> = ({
 }) => {
   const [step, setStep] = useState<DiscoveryStep>({ phase: "idle" });
 
-  const categories: CategoryType[] = ["chat", "research", "code", "image", "video", "general"];
+  const categories: CategoryType[] = ["chat", "research", "code", "image", "video"];
 
   const filteredAgents = step.phase !== "idle"
     ? allAgents.filter(a =>
-      a.category === step.category ||
-      a.category === "general" ||
-      step.category === "general"
+      a.category === step.category
+      // a.category === "general" ||
+      // step.category === "general"
     )
     : [];
 
@@ -485,7 +493,7 @@ const CategoryDiscoveryPanel: React.FC<CategoryDiscoveryPanelProps> = ({
 
   const handleAgentClick = (agent: AgentOption) => {
     if (step.phase === "agents") {
-      onAgentSelect?.(agent);                    // ← THIS IS THE IMPORTANT LINE
+      onAgentSelect?.(agent);
       setStep({ phase: "prompts", category: step.category, agent });
     }
   };
@@ -686,7 +694,7 @@ const PaymentGateCard: React.FC<{
 
         {error && (
           <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-3 py-2.5">
-            <p className="font-body text-xs text-red-500">{error}</p>
+            <p className="font-body text-xs text-red-500 break-all">{error}</p>
           </div>
         )}
 
@@ -772,7 +780,7 @@ const AgentResponseBubble: React.FC<{
   busy: boolean;
   isLatest: boolean;
 }> = ({ msg, compareAgents, onCompare, busy, isLatest }) => {
-  const { emoji, label } = catMeta(msg.category ?? "general");
+  const { emoji, label } = catMeta(msg.category!);
   const agentColor = providerColor(msg.agentProvider);
 
   return (
@@ -908,9 +916,6 @@ const VoiceInputBar: React.FC<{
 );
 
 // ─── Agent Selector Dropdown ──────────────────────────────────────────────────
-// FIX 8: Replaces the static text label with a full agent picker dropdown
-
-// ─── Agent Selector Dropdown ──────────────────────────────────────────────────
 
 const AgentSelectorDropdown: React.FC<{
   selectedAgent: AgentOption;
@@ -921,7 +926,6 @@ const AgentSelectorDropdown: React.FC<{
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
@@ -960,14 +964,10 @@ const AgentSelectorDropdown: React.FC<{
         />
       </button>
 
-      {/* FIXED DROPDOWN - Portal-like behavior with high z-index */}
       {open && (
         <div
           className="fixed z-[9999] mt-1 w-56 rounded-2xl border border-zap-bg-alt bg-zap-bg-raised shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-100"
-          style={{
-            top: "auto",           // we'll calculate position manually if needed
-            left: "auto",
-          }}
+          style={{ top: "auto", left: "auto" }}
         >
           <div className="px-3 py-2 border-b border-zap-bg-alt">
             <p className="font-mono text-[9px] uppercase tracking-widest text-zap-ink-faint">
@@ -1011,6 +1011,7 @@ const AgentSelectorDropdown: React.FC<{
     </div>
   );
 };
+
 // ─── Input Bar ────────────────────────────────────────────────────────────────
 
 interface InputBarProps {
@@ -1042,16 +1043,10 @@ const InputBar: React.FC<InputBarProps> = ({
 
   return (
     <div className="w-full relative">
-
-      {/* Attached Image Preview */}
       {attachedImage && (
         <div className="mb-2 flex items-center gap-2">
           <div className="relative h-12 w-12 rounded-lg overflow-hidden">
-            <img
-              src={attachedImage}
-              alt="Attached"
-              className="h-full w-full object-cover"
-            />
+            <img src={attachedImage} alt="Attached" className="h-full w-full object-cover" />
             <button
               type="button"
               onClick={onImageRemove}
@@ -1064,9 +1059,7 @@ const InputBar: React.FC<InputBarProps> = ({
         </div>
       )}
 
-      {/* Main Input Card */}
       <div className="rounded-2xl bg-zap-bg-raised overflow-hidden focus-within:ring-1 focus-within:ring-zap-brand/20 transition-all">
-
         {isVoice ? (
           <VoiceInputBar
             state={voiceState as "connecting" | "listening" | "processing"}
@@ -1099,7 +1092,6 @@ const InputBar: React.FC<InputBarProps> = ({
           />
         )}
 
-        {/* Bottom Bar */}
         <div className="flex items-center justify-between gap-2 px-3 pb-3 pt-1">
           <div className="flex items-center gap-1">
             <button
@@ -1117,27 +1109,23 @@ const InputBar: React.FC<InputBarProps> = ({
               className="hidden"
               onChange={onImageAttach}
             />
-
             <button
               type="button"
               onClick={onVoiceToggle}
               disabled={busy}
-              className={`rounded-lg p-2 transition-colors disabled:opacity-40 ${isVoice ? "text-zap-brand" : "text-zap-ink-faint hover:text-zap-ink hover:bg-zap-bg-alt"
-                }`}
+              className={`rounded-lg p-2 transition-colors disabled:opacity-40 ${isVoice ? "text-zap-brand" : "text-zap-ink-faint hover:text-zap-ink hover:bg-zap-bg-alt"}`}
             >
               {isVoice ? <MicOff size={15} strokeWidth={1.75} /> : <Mic size={15} strokeWidth={1.75} />}
             </button>
           </div>
 
-          {/* Agent Selector + Send */}
-          <div className="flex items-center gap-2.5 relative z-50">   {/* ← Important: z-50 + relative */}
+          <div className="flex items-center gap-2.5 relative z-50">
             <AgentSelectorDropdown
               selectedAgent={selectedAgent}
               allAgents={allAgents}
               onSelect={onAgentSelect}
               disabled={busy}
             />
-
             <button
               type="button"
               onClick={onSend}
@@ -1187,13 +1175,29 @@ const TerminalChatPage: React.FC = () => {
   const { selectedAgent, setSelectedAgent } = useAgentStore();
 
   const { agents: rawAgents, loading: agentsLoading } = useOnChainAgents({ onlyAgents: true });
-  const allAgents: AgentOption[] = rawAgents.length > 0
-    ? rawAgents.map(a => ({
-      id: a.id, name: a.name, handle: a.handle,
-      provider: a.provider, category: a.category,
-      imageUrl: a.imageUrl, priceUsdc: 0.02,
+
+function categoryPrice(category: string): number {
+  switch (category) {
+    case "chat":     return 0.10;
+    case "research": return 0.10;
+    case "code":     return 0.15;
+    case "image":    return 0.50;
+    case "video":    return 0.75;
+    default:         return 0.10;
+  }
+}
+const allAgents: AgentOption[] = rawAgents.length > 0
+  ? rawAgents.map(a => ({
+      id: a.id,
+      name: a.name,
+      handle: a.handle,
+      provider: a.provider,
+      category: a.category,
+      imageUrl: a.imageUrl,
+      walletAddress: a.walletAddress || undefined,
+      priceUsdc: categoryPrice(a.category), 
     }))
-    : [CLAUDE_DEFAULT];
+  : [CLAUDE_DEFAULT];
 
   const [conversations, setConversations] = useState<Conversation[]>(loadConversations);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
@@ -1216,7 +1220,6 @@ const TerminalChatPage: React.FC = () => {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const [fallbackIds, setFallbackIds] = useState<Set<string>>(new Set());
-
   const [fromZap, setFromZap] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -1228,10 +1231,6 @@ const TerminalChatPage: React.FC = () => {
   const transcriptRef = useRef("");
   const didHandleStateRef = useRef(false);
 
-  // FIX 7: isCenterState only true when there's no active conversation ID at all.
-  // Once a convId is set (even with pending payment), we stay in chat view.
-  // We still show the center layout when there are literally no messages AND no
-  // pending payment — so a fresh start still looks clean.
   const activeConv = conversations.find(c => c.id === activeConvId) ?? null;
   const isCenterState = !activeConvId && !pendingPayment;
 
@@ -1318,11 +1317,8 @@ const TerminalChatPage: React.FC = () => {
     if (pendingPayment && voiceState !== "idle") {
       voiceLoopRef.current = false;
       recognitionRef.current?.stop();
-      if (silenceTimerRef.current) {
-        clearTimeout(silenceTimerRef.current);
-      }
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       window.speechSynthesis?.cancel();
-
       setVoiceState("idle");
       setTranscript("");
       transcriptRef.current = "";
@@ -1333,8 +1329,6 @@ const TerminalChatPage: React.FC = () => {
     didHandleStateRef.current = false;
   }, [location.key]);
 
-  // FIX 7: addMessageToConv uses functional updater — always works even
-  // when called immediately after setConversations in the same render cycle.
   const addMessageToConv = useCallback((convId: string, msg: ConvMessage) => {
     setConversations(prev => prev.map(c => {
       if (c.id !== convId) return c;
@@ -1372,14 +1366,10 @@ const TerminalChatPage: React.FC = () => {
     setPaymentError(null);
   }, []);
 
-  // FIX 7: Create conversation WITH the user message baked in so that
-  // activeConv.messages.length is always >= 1 before the payment gate appears.
-  // This means declining payment never collapses back to center state.
   const handleSendDirect = useCallback(async (text: string, agent: AgentOption) => {
     if (!text.trim() || busy) return;
     if (!connected) { openWalletConnect(); return; }
 
-    // Stop voice immediately 
     if (voiceState !== "idle") {
       voiceLoopRef.current = false;
       recognitionRef.current?.stop();
@@ -1412,7 +1402,6 @@ const TerminalChatPage: React.FC = () => {
       phase: "pending_payment",
     };
 
-    // FIX 7: Include userMsg in the conversation at creation time
     const newConv: Conversation = {
       id: convId,
       title: text.slice(0, 50) + (text.length > 50 ? "…" : ""),
@@ -1431,25 +1420,22 @@ const TerminalChatPage: React.FC = () => {
     ];
 
     queueRequest(convId, agent, text, category, history);
-  }, [busy, connected, openWalletConnect, queueRequest]);
+  }, [busy, connected, openWalletConnect, queueRequest, voiceState]);
 
   const handleSend = useCallback(async (overrideText?: string, overrideAgent?: AgentOption) => {
     const text = (overrideText ?? input).trim();
     if (!text || busy) return;
     if (!connected) { openWalletConnect(); return; }
 
-    // ←←← ADD THIS BLOCK: Stop voice immediately when sending
     if (voiceState !== "idle") {
       voiceLoopRef.current = false;
       recognitionRef.current?.stop();
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       window.speechSynthesis?.cancel();
-
       setVoiceState("idle");
       setTranscript("");
       transcriptRef.current = "";
     }
-    // ←←← END OF VOICE CLEANUP
 
     const agent = overrideAgent ?? selectedAgent;
     const category =
@@ -1500,13 +1486,9 @@ const TerminalChatPage: React.FC = () => {
     queueRequest(convId, agent, text, category, history);
   }, [input, busy, connected, selectedAgent, activeConvId, attachedImage, openWalletConnect, addMessageToConv, queueRequest, voiceState]);
 
-  const handleDiscoverySelect = useCallback((
-    prompt: string,
-    agent: AgentOption
-  ) => {
+  const handleDiscoverySelect = useCallback((prompt: string, agent: AgentOption) => {
     startNewConversation();
 
-    // Stop voice if active
     if (voiceState !== "idle") {
       voiceLoopRef.current = false;
       recognitionRef.current?.stop();
@@ -1532,16 +1514,22 @@ const TerminalChatPage: React.FC = () => {
 
     let txHash: string | null = null;
     try {
-      const recipientAddress = agent.walletAddress ?? "GAEJDS76I7ZDTJCOWPQVY777AGAQK56HNBPPWL2H64JSPPBBXMOBUYUI";
+      const recipientAddress = agent.walletAddress;
+      if (!recipientAddress) {
+        setPaymentError("This agent has no wallet address configured and cannot receive payments.");
+        setPaying(false);
+        return;
+      }
       txHash = await payToAsk(recipientAddress, prompt, price.toFixed(2));
       if (!txHash) throw new Error("Payment failed — no transaction hash returned.");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      console.error("Payment error RAW:", msg);
       const friendly = msg.includes("InsufficientBalance") || msg.includes("#10")
         ? "Insufficient wallet balance. Please top up and retry."
-        : msg.includes("Contract")
-          ? "Smart contract error. Please check your wallet and retry."
-          : "Payment failed. Please try again.";
+        : msg.includes("Missing creator")
+          ? "Agent has no wallet address configured."
+          : msg;
       setPaymentError(friendly);
       setPaying(false);
       return;
@@ -1607,8 +1595,6 @@ const TerminalChatPage: React.FC = () => {
   }, [pendingPayment, paying, payToAsk, addMessageToConv, conversations]);
 
   const handleDeclinePay = useCallback(() => {
-    // FIX 7: Only clear the payment gate — do NOT touch activeConvId.
-    // The conversation (with its user message) stays visible in chat view.
     setPendingPayment(null);
     setPaymentError(null);
   }, []);
@@ -1630,7 +1616,7 @@ const TerminalChatPage: React.FC = () => {
   const getCompareAgents = useCallback((conv: Conversation, responseCategory: CategoryType): AgentOption[] => {
     return allAgents
       .filter(a =>
-        (a.category === responseCategory || responseCategory === "general" || a.category === "general") &&
+        (a.category === responseCategory || a.category === "general") &&
         !conv.usedAgentIds.includes(a.id)
       )
       .slice(0, 5);
@@ -1713,7 +1699,7 @@ const TerminalChatPage: React.FC = () => {
       m.role === "assistant" && !m.content.startsWith("__TX_CONFIRMED__:")
     );
     const isLatest = assistantMessages[assistantMessages.length - 1]?.id === msg.id;
-    const compareAgents = isLatest ? getCompareAgents(conv, msg.category ?? "general") : [];
+    const compareAgents = isLatest ? getCompareAgents(conv, msg.category!) : [];
     const isFallback = fallbackIds.has(msg.id);
 
     return (

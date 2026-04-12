@@ -50,7 +50,7 @@ export interface CloneChatProps {
 const CloneChat: React.FC<CloneChatProps> = ({
   creatorName,
   creatorAddress,
-  pricePerMessageUsdc = "0.05",
+  pricePerMessageUsdc = "0.01",
   demoMode = true,
   compact = false,
   capabilitySnippets = [],
