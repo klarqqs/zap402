@@ -9,7 +9,7 @@ export const ASK_INBOX_DEMO_THREADS: AskThread[] = [
     timeLabel: "2d ago",
     unread: false,
     requestTypeLabel: "Answer a question",
-    amountUsdc: "0.50",
+    amountUsdc: "0.02",
     status: "done",
     messages: [
       {

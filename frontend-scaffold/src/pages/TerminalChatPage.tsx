@@ -127,7 +127,7 @@ const CLAUDE_DEFAULT: AgentOption = {
   handle: "claude_agent",
   provider: "Anthropic",
   category: "research",
-  priceUsdc: 0.50,
+  priceUsdc: 0.02,
 };
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || "";
@@ -290,11 +290,11 @@ function catMeta(cat: CategoryType) {
 function priceForAgent(agent: AgentOption): number {
   if (agent.priceUsdc) return agent.priceUsdc;
   const p = agent.provider.toLowerCase();
-  if (p.includes("anthropic")) return 0.50;
-  if (p.includes("openai")) return 0.50;
-  if (p.includes("google")) return 0.40;
-  if (p.includes("midjourney") || p.includes("dall")) return 0.80;
-  if (p.includes("runway") || p.includes("sora") || p.includes("pika")) return 1.50;
+  if (p.includes("anthropic")) return 0.02;
+  if (p.includes("openai")) return 0.02;
+  if (p.includes("google")) return 0.02;
+  if (p.includes("midjourney") || p.includes("dall")) return 0.08;
+  if (p.includes("runway") || p.includes("sora") || p.includes("pika")) return 0.1;
   return 0.30;
 }
 
