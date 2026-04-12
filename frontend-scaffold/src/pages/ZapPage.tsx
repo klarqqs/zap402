@@ -285,7 +285,7 @@ const TryAgentCTA: React.FC<TryAgentCTAProps> = ({
                   },
                 });
               }}
-              className="group flex w-full items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3.5 hover:bg-zinc-900 hover:border-zinc-700 transition-all text-left"
+              className="group flex w-full items-start gap-3 rounded-xl border border-zap-bg-alt bg-zinc-950 px-4 py-3.5 hover:bg-zinc-900 hover:border-zap-bg-alt transition-all text-left"
             >
               <span className="text-lg shrink-0 mt-px">{emoji}</span>
 

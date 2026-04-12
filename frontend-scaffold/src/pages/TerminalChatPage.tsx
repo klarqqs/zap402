@@ -574,7 +574,7 @@ const CategoryDiscoveryPanel: React.FC<{
                       key={agent.id}
                       type="button"
                       onClick={() => handleAgentClick(agent)}
-                      className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-zap-bg-alt/60 transition-colors group border-b border-zinc-800 last:border-b-0"
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-zap-bg-alt/60 transition-colors group border-b border-zap-bg-alt last:border-b-0"
                     >
                       {/* Avatar */}
                       <AgentAvatar agent={agent} size={30} fontSize={10} />
@@ -611,7 +611,7 @@ const CategoryDiscoveryPanel: React.FC<{
           {step.phase === "prompts" && (
             <div className="divide-y divide-zinc-800/50">
               {/* Selected agent mini header */}
-              <div className="flex items-center gap-2.5 px-4 py-2.5 bg-zap-bg-alt/30 border-b border-zinc-800/70">
+              <div className="flex items-center gap-2.5 px-4 py-2.5 bg-zap-bg-alt/30 border-b border-zap-bg-alt/70">
                 <AgentAvatar agent={step.agent} size={20} fontSize={8} />
                 <span className="font-body text-[11px] text-zap-ink-muted">
                   {step.agent.name} · ${priceForAgent(step.agent).toFixed(2)}/req
@@ -624,7 +624,7 @@ const CategoryDiscoveryPanel: React.FC<{
                   key={i}
                   type="button"
                   onClick={() => handlePromptClick(prompt)}
-                  className="w-full text-left px-4 py-3.5 hover:bg-zap-bg-alt/60 transition-colors group flex items-start gap-3 border-b border-zinc-800/50 last:border-b-0"
+                  className="w-full text-left px-4 py-3.5 hover:bg-zap-bg-alt/60 transition-colors group flex items-start gap-3 border-b border-zap-bg-alt/50 last:border-b-0"
                 >
                   <span className="font-mono text-[9px] text-zap-ink-faint mt-0.5 shrink-0 w-3">
                     {i + 1}.
@@ -661,9 +661,9 @@ const PaymentGateCard: React.FC<{
   const { emoji, label } = catMeta(category);
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-950 overflow-hidden max-w-sm">
+    <div className="rounded-2xl border border-zap-bg-alt bg-zap-bg-alt overflow-hidden max-w-sm">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-zinc-800 flex items-center gap-2.5">
+      <div className="px-4 py-3 border-b border-zap-bg-alt flex items-center gap-2.5">
         <Zap size={13} className="text-zap-brand" strokeWidth={2.5} />
         <p className="font-body text-[11px] font-semibold uppercase tracking-[0.12em] text-zap-brand">
           x402 · Payment Required
@@ -671,7 +671,7 @@ const PaymentGateCard: React.FC<{
       </div>
 
       {/* Agent Info */}
-      <div className="px-4 pt-5 pb-3 flex items-center gap-3 border-b border-zinc-800">
+      <div className="px-4 pt-5 pb-3 flex items-center gap-3 border-b border-zap-bg-alt">
         <AgentAvatar agent={agent} size={38} fontSize={13} />
         <div className="min-w-0 flex-1">
           <p className="font-body text-[13px] font-semibold text-zap-ink truncate">
@@ -726,7 +726,7 @@ const PaymentGateCard: React.FC<{
             type="button"
             onClick={onDecline}
             disabled={paying}
-            className="rounded-xl border border-zinc-700 px-5 font-body text-sm text-zap-ink-muted hover:text-zap-ink hover:border-zinc-600 transition-colors disabled:opacity-40"
+            className="rounded-xl border border-zap-bg-alt px-5 font-body text-sm text-zap-ink-muted hover:text-zap-ink hover:border-zap-bg-alt transition-colors disabled:opacity-40"
           >
             Decline
           </button>
@@ -948,6 +948,7 @@ const InputBar: React.FC<InputBarProps> = ({
   const isVoice = voiceState !== "idle";
   const price = priceForAgent(selectedAgent);
 
+
   return (
     <div className="w-full">
       {attachedImage && (
@@ -1008,7 +1009,6 @@ const InputBar: React.FC<InputBarProps> = ({
 
           {/* Right: agent label (plain text) + send */}
           <div className="flex items-center gap-2.5">
-            {/* Plain text agent indicator — no dropdown */}
             <div className="flex items-center gap-1.5">
               <span
                 className="h-1.5 w-1.5 rounded-full shrink-0"
@@ -1060,11 +1060,6 @@ const TerminalChatPage: React.FC = () => {
   const [conversations, setConversations] = useState<Conversation[]>(loadConversations);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentOption>(CLAUDE_DEFAULT);
-  const [input, setInput] = useState("");
-  const [attachedImage, setAttachedImage] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [voiceState, setVoiceState] = useState<"idle" | "connecting" | "listening" | "processing">("idle");
-  const [transcript, setTranscript] = useState("");
 
   const [pendingPayment, setPendingPayment] = useState<{
     convId: string;
@@ -1074,6 +1069,15 @@ const TerminalChatPage: React.FC = () => {
     category: CategoryType;
     history: { role: string; content: string }[];
   } | null>(null);
+
+
+  const currentAgent =
+    pendingPayment?.agent || selectedAgent;
+  const [input, setInput] = useState("");
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [voiceState, setVoiceState] = useState<"idle" | "connecting" | "listening" | "processing">("idle");
+  const [transcript, setTranscript] = useState("");
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const [fallbackIds, setFallbackIds] = useState<Set<string>>(new Set());
@@ -1470,7 +1474,7 @@ const TerminalChatPage: React.FC = () => {
   return (
     <div className="h-screen flex flex-col">
       <div
-        className={`mx-auto w-full max-w-2xl px-4 flex flex-col flex-1 ${isCenterState ? "py-6" : "min-h-0"
+        className={`mx-auto w-full max-w-2xl flex flex-col flex-1 ${isCenterState ? "min-h-0" : "min-h-0"
           }`}
       >
         {/* ── CENTER STATE ── */}
@@ -1488,7 +1492,8 @@ const TerminalChatPage: React.FC = () => {
             <div className="w-full max-w-xl">
               <InputBar
                 {...inputBarProps}
-                placeholder={`Ask ${selectedAgent.name} anything…`}
+                selectedAgent={currentAgent}
+                placeholder={`Ask ${currentAgent.name} anything…`}
               />
             </div>
 
@@ -1518,7 +1523,7 @@ const TerminalChatPage: React.FC = () => {
               <button
                 type="button"
                 onClick={startNewConversation}
-                className="inline-flex items-center gap-1.5 rounded-full border border-zap-bg-alt bg-zap-bg px-3 py-1.5 font-body text-[14px] text-zap-ink-muted hover:border-zap-bg-alt hover:text-zap-ink transition-all"
+                className="inline-flex items-center gap-1.5 rounded-full border border-zap-bg-alt bg-zap-bg-alt px-3 py-1.5 font-body text-[14px] text-zap-ink-muted hover:border-zap-bg-alt hover:text-zap-ink transition-all"
               >
                 <Plus size={14} strokeWidth={2} /> New
               </button>
@@ -1551,7 +1556,8 @@ const TerminalChatPage: React.FC = () => {
             <div className="shrink-0 pt-3 pb-2 border-t border-zap-bg-alt">
               <InputBar
                 {...inputBarProps}
-                placeholder={`Continue with ${selectedAgent.name}…`}
+                selectedAgent={currentAgent}
+                placeholder={`Continue with ${currentAgent.name}…`}
               />
             </div>
           </div>

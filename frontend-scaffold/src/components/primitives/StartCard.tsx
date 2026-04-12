@@ -31,7 +31,7 @@ export const StatCard: React.FC<StatCardProps> = ({
         border-4 border-black dark:border-white 
         p-6 
         shadow-none
-        hover:border-zinc-600 dark:hover:border-zinc-300
+        hover:border-zap-bg-alt dark:hover:border-zinc-300
         transition-colors duration-200
         flex flex-col
         ${className}

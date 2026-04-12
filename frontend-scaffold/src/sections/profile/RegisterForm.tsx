@@ -205,7 +205,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ visualVariant = 'default' }
       <>
         {checking && (
           <div
-            className="h-4 w-4 animate-spin rounded-full border-2 border-zap-bg-alt border-t-zap-brand dark:border-zinc-600 dark:border-t-white"
+            className="h-4 w-4 animate-spin rounded-full border-2 border-zap-bg-alt border-t-zap-brand dark:border-zap-bg-alt dark:border-t-white"
             aria-hidden
           />
         )}
@@ -390,8 +390,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ visualVariant = 'default' }
       <div
         className={
           editorial
-            ? 'border-t border-zap-bg-alt pt-6 dark:border-zinc-600'
-            : 'border-t-2 border-dashed border-zap-bg-alt pt-6 dark:border-zinc-600'
+            ? 'border-t border-zap-bg-alt pt-6 dark:border-zap-bg-alt'
+            : 'border-t-2 border-dashed border-zap-bg-alt pt-6 dark:border-zap-bg-alt'
         }
       >
         <Button
