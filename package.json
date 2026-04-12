@@ -1,0 +1,36 @@
+{
+  "name": "zap402",
+  "version": "1.0.0",
+  "description": "Zap402 — payout layer for creators: zaps, unlocks, and AI monetization on Stellar",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "cd frontend-scaffold && npm run dev",
+    "start": "cd frontend-scaffold && npm run start",
+    "build": "cd frontend-scaffold && npm run build",
+    "preview": "cd frontend-scaffold && npm run preview",
+    "typecheck": "cd frontend-scaffold && npm run typecheck",
+    "lint": "cd frontend-scaffold && npm run lint",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nursca/Stellar-Tipz.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Nursca/Stellar-Tipz/issues"
+  },
+  "homepage": "https://github.com/Nursca/Stellar-Tipz#readme",
+  "dependencies": {
+    "react-speech-recognition": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/react-speech-recognition": "^3.9.6"
+  }
+}

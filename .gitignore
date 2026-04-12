@@ -1,0 +1,30 @@
+BUILD_GUIDE.md
+PITCH_DECK_10_SLIDES.md
+project_structure.md
+CONTRACT_ISSUE.md
+FRONTEND_ISSUE.md
+frontend
+contract
+
+# Dependencies
+node_modules/
+target/
+
+# Build outputs
+dist/
+*.wasm
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

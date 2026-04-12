@@ -1,0 +1,60 @@
+name: Contract CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "contracts/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "contracts/**"
+
+permissions:
+  contents: read
+
+jobs:
+  contract-checks:
+    name: Build & Test Soroban Contract
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    defaults:
+      run:
+        working-directory: contracts
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.88.0
+        with:
+          targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
+
+      - name: Cache cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            contracts/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('contracts/**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Run tests
+        run: cargo test
+
+      - name: Build Wasm (release)
+        run: cargo build --target wasm32-unknown-unknown --release
+
+      - name: Check WASM binary size
+        run: make check-size

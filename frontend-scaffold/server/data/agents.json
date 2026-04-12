@@ -1,0 +1,38 @@
+[
+  {
+    "id": "agent_claude_seed",
+    "name": "Claude Agent",
+    "handle": "claude_agent",
+    "provider": "Anthropic",
+    "category": "research",
+    "walletAddress": "",
+    "enabled": true,
+    "tag": "agent",
+    "createdAt": "2026-04-08T15:13:07.453Z",
+    "updatedAt": "2026-04-08T15:13:07.453Z"
+  },
+  {
+    "id": "agent_chatgpt_seed",
+    "name": "ChatGPT Agent",
+    "handle": "chatgpt_agent",
+    "provider": "OpenAI",
+    "category": "research",
+    "walletAddress": "",
+    "enabled": true,
+    "tag": "agent",
+    "createdAt": "2026-04-08T15:13:07.453Z",
+    "updatedAt": "2026-04-08T15:13:07.453Z"
+  },
+  {
+    "id": "agent_gemini_seed",
+    "name": "Gemini Agent",
+    "handle": "gemini_agent",
+    "provider": "Google",
+    "category": "research",
+    "walletAddress": "",
+    "enabled": true,
+    "tag": "agent",
+    "createdAt": "2026-04-08T15:13:07.453Z",
+    "updatedAt": "2026-04-08T15:13:07.453Z"
+  }
+]
