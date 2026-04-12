@@ -131,8 +131,7 @@ const AgentCard: React.FC<{ agent: ApiAgent }> = ({ agent }) => {
 
           {/* Category badge */}
           <span
-            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-body text-[9px] font-semibold shrink-0"
-            style={{ background: `${meta.color}18`, color: meta.color, border: `1px solid ${meta.color}30` }}
+            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-body text-[9px] font-semibold shrink-0 border-zap-bg-alt bg-zap-ink text-zap-bg"
           >
             {meta.emoji} {meta.label}
           </span>
@@ -255,10 +254,7 @@ const SearchPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveFilter("all")}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-body text-[11px] font-semibold transition-all ${activeFilter === "all"
-              ? "border-zap-bg-alt bg-zap-ink text-zap-bg"
-              : "border-zap-bg-alt bg-zap-bg text-zap-ink-muted hover:border-zap-bg-alt hover:text-zap-ink"
-              }`}
+            className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-body text-[11px] font-semibold transition-all border-zap-bg-alt bg-zap-ink text-zap-bg"
           >
             All
             <span className="font-mono text-[9px] opacity-60">{totalByCategory.all ?? 0}</span>
