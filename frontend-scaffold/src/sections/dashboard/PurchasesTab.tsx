@@ -106,12 +106,12 @@ function providerInitials(provider: string): string {
 
 function catMeta(cat: CategoryType) {
   const m: Record<CategoryType, { emoji: string; label: string }> = {
-    chat:     { emoji: "💬", label: "Chat" },
+    chat: { emoji: "💬", label: "Chat" },
     research: { emoji: "🔬", label: "Research" },
-    code:     { emoji: "⌨️",  label: "Code" },
-    image:    { emoji: "🎨", label: "Image" },
-    video:    { emoji: "🎬", label: "Video" },
-    general:  { emoji: "⚡", label: "General" },
+    code: { emoji: "⌨️", label: "Code" },
+    image: { emoji: "🎨", label: "Image" },
+    video: { emoji: "🎬", label: "Video" },
+    general: { emoji: "⚡", label: "General" },
   };
   return m[cat] ?? m.general;
 }
@@ -121,21 +121,21 @@ function catMeta(cat: CategoryType) {
 // so PurchasesTab doesn't need the hook. It navigates to TerminalChatPage with state.
 
 const KNOWN_AGENTS: AgentOption[] = [
-  { id: "claude",     name: "Claude Agent",      handle: "claude_agent",      provider: "Anthropic", category: "research" },
-  { id: "chatgpt",    name: "ChatGPT Agent",      handle: "chatgpt_agent",     provider: "OpenAI",    category: "research" },
-  { id: "gemini",     name: "Gemini Agent",       handle: "gemini_agent",      provider: "Google",    category: "research" },
-  { id: "perplexity", name: "Perplexity Agent",   handle: "perplexity_agent",  provider: "On-chain",  category: "research" },
-  { id: "grok",       name: "Grok Agent",         handle: "grok_agent",        provider: "On-chain",  category: "chat" },
-  { id: "deepseek",   name: "DeepSeek Agent",     handle: "deepseek_agent",    provider: "On-chain",  category: "chat" },
-  { id: "llama",      name: "Llama Agent",        handle: "llama_agent",       provider: "Meta",      category: "chat" },
-  { id: "codex",      name: "Codex Agent",        handle: "codex_agent",       provider: "On-chain",  category: "code" },
-  { id: "cursor",     name: "Cursor Agent",       handle: "cursor_agent",      provider: "On-chain",  category: "code" },
-  { id: "copilot",    name: "Copilot Agent",      handle: "copilot_agent",     provider: "On-chain",  category: "code" },
-  { id: "midjourney", name: "Midjourney Agent",   handle: "midjourney_agent",  provider: "On-chain",  category: "image" },
-  { id: "flux",       name: "FLUX Agent",         handle: "flux_agent",        provider: "On-chain",  category: "image" },
-  { id: "dalle",      name: "DALL·E Agent",       handle: "dalle_agent",       provider: "OpenAI",    category: "image" },
-  { id: "pika",       name: "Pika Agent",         handle: "pika_agent",        provider: "On-chain",  category: "video" },
-  { id: "sora",       name: "Sora Agent",         handle: "sora_agent",        provider: "On-chain",  category: "video" },
+  { id: "claude", name: "Claude Agent", handle: "claude_agent", provider: "Anthropic", category: "research" },
+  { id: "chatgpt", name: "ChatGPT Agent", handle: "chatgpt_agent", provider: "OpenAI", category: "research" },
+  { id: "gemini", name: "Gemini Agent", handle: "gemini_agent", provider: "Google", category: "research" },
+  { id: "perplexity", name: "Perplexity Agent", handle: "perplexity_agent", provider: "On-chain", category: "research" },
+  { id: "grok", name: "Grok Agent", handle: "grok_agent", provider: "On-chain", category: "chat" },
+  { id: "deepseek", name: "DeepSeek Agent", handle: "deepseek_agent", provider: "On-chain", category: "chat" },
+  { id: "llama", name: "Llama Agent", handle: "llama_agent", provider: "Meta", category: "chat" },
+  { id: "codex", name: "Codex Agent", handle: "codex_agent", provider: "On-chain", category: "code" },
+  { id: "cursor", name: "Cursor Agent", handle: "cursor_agent", provider: "On-chain", category: "code" },
+  { id: "copilot", name: "Copilot Agent", handle: "copilot_agent", provider: "On-chain", category: "code" },
+  { id: "midjourney", name: "Midjourney Agent", handle: "midjourney_agent", provider: "On-chain", category: "image" },
+  { id: "flux", name: "FLUX Agent", handle: "flux_agent", provider: "On-chain", category: "image" },
+  { id: "dalle", name: "DALL·E Agent", handle: "dalle_agent", provider: "OpenAI", category: "image" },
+  { id: "pika", name: "Pika Agent", handle: "pika_agent", provider: "On-chain", category: "video" },
+  { id: "sora", name: "Sora Agent", handle: "sora_agent", provider: "On-chain", category: "video" },
 ];
 
 // ─── Compare Modal ────────────────────────────────────────────────────────────
@@ -460,10 +460,9 @@ const PurchasesTab: React.FC = () => {
 
       {completedConvs.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-zap-bg-alt px-6 py-12 text-center">
-          <p className="font-body text-2xl mb-2">⚡</p>
-          <p className="font-body text-sm font-semibold text-zap-ink mb-1">No deals yet</p>
+          <p className="font-body text-sm font-semibold text-zap-ink mb-1">No chat history yet</p>
           <p className="font-body text-xs text-zap-ink-muted">
-            Your completed requests appear here after your first payment.
+            Your chats appear here after your first response.
           </p>
         </div>
       ) : (
