@@ -1561,7 +1561,7 @@ const recognitionRef = useRef<any>(null);
     setTranscript(""); transcriptRef.current = "";
     try { await navigator.mediaDevices.getUserMedia({ audio: true }); }
     catch { setVoiceState("idle"); voiceLoopRef.current = false; return; }
-    const rec = new SR() as SpeechRecognition;
+    const rec = new SR() as any;
     rec.continuous = true; rec.interimResults = true; rec.lang = "en-US";
     recognitionRef.current = rec;
     rec.onstart = () => setVoiceState("listening");
