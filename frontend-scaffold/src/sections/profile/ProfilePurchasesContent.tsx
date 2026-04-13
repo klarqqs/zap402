@@ -68,7 +68,7 @@ const ProfilePurchasesContent: React.FC<ProfilePurchasesContentProps> = ({
     let cancelled = false;
     Promise.resolve().then(() => {
       if (cancelled) return;
-     Promise.resolve().then(() => setLoading(true));
+     setLoading(true);
       setError(null);
     });
     getBuyerUnlockLibrary(publicKey)
@@ -188,7 +188,7 @@ const ProfilePurchasesContent: React.FC<ProfilePurchasesContentProps> = ({
         error={error}
         onRetry={() => {
           setError(null);
-         Promise.resolve().then(() => setLoading(true));
+        setLoading(true);
           void getBuyerUnlockLibrary(publicKey)
             .then(setRows)
             .catch((e) =>

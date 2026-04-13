@@ -1453,7 +1453,7 @@ const TerminalChatPage: React.FC = () => {
       const result = await payToAsk(recipientAddress, prompt, price.toFixed(2));
       if (!result) throw new Error("...");
       txHash = result;
-      if (!txHash) throw new Error("Payment failed — no transaction hash returned.");
+      
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("Payment error RAW:", msg);
