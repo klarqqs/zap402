@@ -58,11 +58,13 @@ const ProfilePurchasesContent: React.FC<ProfilePurchasesContentProps> = ({
   const [activeTab, setActiveTab] = useState<"requests" | "content">("requests");
 
   useEffect(() => {
-    if (!publicKey) {
+if (!publicKey) {
+    Promise.resolve().then(() => {
       setRows([]);
       setLoading(false);
-      return;
-    }
+    });
+    return;
+  }
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -81,11 +83,11 @@ const ProfilePurchasesContent: React.FC<ProfilePurchasesContentProps> = ({
     };
   }, [publicKey]);
 
-  useEffect(() => {
-    if (!publicKey) {
-      setAskRows([]);
-      return;
-    }
+useEffect(() => {
+  if (!publicKey) {
+    Promise.resolve().then(() => setAskRows([]));
+    return;
+  }
     let cancelled = false;
     getFanAskRequests(publicKey)
       .then((data) => {
@@ -132,10 +134,10 @@ const ProfilePurchasesContent: React.FC<ProfilePurchasesContentProps> = ({
   }, [creatorAddresses, getProfile]);
 
   useEffect(() => {
-    if (!publicKey || creatorAddresses.length === 0) {
-      setItemDetails({});
-      return;
-    }
+if (!publicKey || creatorAddresses.length === 0) {
+    Promise.resolve().then(() => setItemDetails({}));
+    return;
+  }
     let cancelled = false;
     setDetailsLoading(true);
     Promise.all(
