@@ -1,16 +1,11 @@
 // src/pages/terminal/TerminalChatPage.tsx
-// FIXES:
-// 1. Agent syncs via useAgentStore (persisted global state)
-// 2. History resume auto-sets the correct agent
-// 3. Zap page prompt click starts conversation immediately (no greeting)
-// 4. Images render correctly (same as video)
-// 5. Chat nav link does NOT reset state — only New Chat button does
-// 6. No "Good morning/evening" greeting shown when arriving from Zap page
-// 7. FIX: Declining payment no longer collapses back to center state
-//    (user message is now included in newConv.messages at creation time,
-//     so activeConv.messages.length is always > 0 before the payment gate)
-// 8. FIX: Agent selector next to send button is now a dropdown with all agents
-// 9. FIX: walletAddress is now mapped through from rawAgents so payments work
+// CHANGES v2:
+// 1. PaymentGateCard — compact inline pill, not a full card. Amount is tasteful.
+// 2. Smooth CSS animations throughout: prompt→payment→response flow
+// 3. Staggered message entrance animations
+// 4. Payment pill collapses/dissolves on confirm, expands into TX bubble
+// 5. TypingIndicator upgraded with pulse glow ring
+// 6. All transitions 200-300ms ease, feels native/fast
 
 import React, {
   useCallback,
@@ -112,13 +107,6 @@ const CATEGORY_PROMPTS: Record<CategoryType, string[]> = {
     "Produce a dramatic title sequence with particle effects",
     "Create a short explainer video animation concept",
   ],
-  // general: [
-  //   "Help me think through a complex problem step by step",
-  //   "Summarize and extract key insights from a long document",
-  //   "Create a structured plan for a new project",
-  //   "Give me a framework for evaluating important decisions",
-  //   "Help me brainstorm creative solutions to a challenge",
-  // ],
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -179,7 +167,6 @@ const CATEGORY_SIGNALS: Record<CategoryType, string[]> = {
     "opinion", "think", "feel", "suggest", "recommend", "idea", "plan", "strategy", "what do you",
     "can you", "could you", "please", "thanks", "tell me", "show me", "give me",
   ],
-  // general: [],
 };
 
 const AI_VIDEOS = [
@@ -209,12 +196,8 @@ function pickRandom<T>(arr: T[]): T {
 function classifyCategory(text: string): CategoryType {
   const lower = text.toLowerCase();
   const words = lower.split(/\s+/);
-  const scores: Record<CategoryType, number> = {
-    code: 0, image: 0, video: 0, research: 0, chat: 0,
-    //  general: 0,
-  };
+  const scores: Record<CategoryType, number> = { code: 0, image: 0, video: 0, research: 0, chat: 0 };
   for (const [cat, signals] of Object.entries(CATEGORY_SIGNALS) as [CategoryType, string[]][]) {
-    // if (cat === "general") continue;
     for (const signal of signals) {
       if (lower.includes(signal)) {
         const earlyBonus = words.slice(0, 5).some(w => w.includes(signal.split(" ")[0])) ? 1.5 : 1;
@@ -225,9 +208,7 @@ function classifyCategory(text: string): CategoryType {
   if (/`[^`]+`|[a-z][A-Z]|[a-z]_[a-z]|\w+\(|\{[\s\S]*\}/.test(text)) scores.code += 3;
   if (/\bof a\b|\bstyle of\b|\bin the style\b|\ba photo\b|\ban image\b/.test(lower)) scores.image += 2;
   if (/^\s*(what|why|how|when|where|who|which|explain|describe|define)\b/.test(lower)) scores.research += 2;
-  const sorted = (Object.entries(scores) as [CategoryType, number][])
-    // .filter(([cat]) => cat !== "general")
-    .sort(([, a], [, b]) => b - a);
+  const sorted = (Object.entries(scores) as [CategoryType, number][]).sort(([, a], [, b]) => b - a);
   const [topCat, topScore] = sorted[0];
   return topScore > 0 ? topCat : "chat";
 }
@@ -287,7 +268,6 @@ function catMeta(cat: CategoryType) {
     code: { emoji: "⌨️", label: "Code", description: "Write, debug & review code" },
     image: { emoji: "🎨", label: "Image", description: "Generate visuals" },
     video: { emoji: "🎬", label: "Video", description: "Create video content" },
-    // general: { emoji: "⚡", label: "General", description: "All-purpose" },
   };
   return m[cat];
 }
@@ -307,6 +287,7 @@ function priceForAgent(agent: AgentOption): number {
   if (agent.priceUsdc) return agent.priceUsdc;
   return categoryPrice(agent.category ?? "general");
 }
+
 // ─── localStorage Persistence ─────────────────────────────────────────────────
 
 const STORAGE_KEY = "zap402_conversations_v2";
@@ -319,9 +300,7 @@ function loadConversations(): Conversation[] {
 }
 
 function saveConversations(convos: Conversation[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(convos));
-  } catch { }
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(convos)); } catch { }
 }
 
 // ─── API Calls ────────────────────────────────────────────────────────────────
@@ -473,11 +452,7 @@ const CategoryDiscoveryPanel: React.FC<CategoryDiscoveryPanelProps> = ({
   const categories: CategoryType[] = ["chat", "research", "code", "image", "video"];
 
   const filteredAgents = step.phase !== "idle"
-    ? allAgents.filter(a =>
-      a.category === step.category
-      // a.category === "general" ||
-      // step.category === "general"
-    )
+    ? allAgents.filter(a => a.category === step.category)
     : [];
 
   const prompts = step.phase === "prompts"
@@ -525,7 +500,7 @@ const CategoryDiscoveryPanel: React.FC<CategoryDiscoveryPanelProps> = ({
               key={cat}
               type="button"
               onClick={() => handleCategoryClick(cat)}
-              className={`inline-flex items-center gap-1.5 rounded-full border border-zap-bg-alt px-3.5 py-1.5 font-body text-[12px] transition-all duration-150 ${isActive
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 font-body text-[12px] transition-all duration-150 ${isActive
                 ? "border-zap-bg-alt/60 bg-zap-brand/10 text-zap-ink"
                 : "border-zap-bg-alt bg-zap-bg-raised text-zap-ink-muted hover:border-zap-bg-alt/40 hover:text-zap-ink"
                 }`}
@@ -541,11 +516,7 @@ const CategoryDiscoveryPanel: React.FC<CategoryDiscoveryPanelProps> = ({
         <div className="rounded-2xl border border-zap-bg-alt bg-zap-bg-raised overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
           <div className="flex items-center gap-2 px-4 py-2.5 border-b border-zap-bg-alt">
             {step.phase === "prompts" && (
-              <button
-                type="button"
-                onClick={handleBack}
-                className="text-zap-ink-faint hover:text-zap-ink transition-colors mr-1"
-              >
+              <button type="button" onClick={handleBack} className="text-zap-ink-faint hover:text-zap-ink transition-colors mr-1">
                 <ArrowLeft size={13} strokeWidth={2} />
               </button>
             )}
@@ -554,11 +525,7 @@ const CategoryDiscoveryPanel: React.FC<CategoryDiscoveryPanelProps> = ({
                 ? `${catMeta(step.category).emoji} ${catMeta(step.category).label} agents`
                 : `Suggested prompts · ${step.agent.name}`}
             </span>
-            <button
-              type="button"
-              onClick={() => setStep({ phase: "idle" })}
-              className="text-zap-ink-faint hover:text-zap-ink transition-colors"
-            >
+            <button type="button" onClick={() => setStep({ phase: "idle" })} className="text-zap-ink-faint hover:text-zap-ink transition-colors">
               <X size={12} strokeWidth={2} />
             </button>
           </div>
@@ -586,22 +553,12 @@ const CategoryDiscoveryPanel: React.FC<CategoryDiscoveryPanelProps> = ({
                     >
                       <AgentAvatar agent={agent} size={30} fontSize={10} />
                       <div className="flex-1 min-w-0">
-                        <p className="font-body text-[12px] font-semibold text-zap-ink truncate">
-                          {agent.name}
-                        </p>
-                        <p className="font-body text-[10px] text-zap-ink-faint">
-                          @{agent.handle} · {agent.provider}
-                        </p>
+                        <p className="font-body text-[12px] font-semibold text-zap-ink truncate">{agent.name}</p>
+                        <p className="font-body text-[10px] text-zap-ink-faint">@{agent.handle} · {agent.provider}</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="font-mono text-[10px] text-zap-ink-faint">
-                          ${price.toFixed(2)}/req
-                        </span>
-                        <ChevronDown
-                          size={11}
-                          strokeWidth={2}
-                          className="text-zap-ink-faint -rotate-90 opacity-0 group-hover:opacity-100 transition-opacity"
-                        />
+                        <span className="font-mono text-[10px] text-zap-ink-faint">${price.toFixed(2)}/req</span>
+                        <ChevronDown size={11} strokeWidth={2} className="text-zap-ink-faint -rotate-90 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
                     </button>
                   );
@@ -625,17 +582,9 @@ const CategoryDiscoveryPanel: React.FC<CategoryDiscoveryPanelProps> = ({
                   onClick={() => handlePromptClick(prompt)}
                   className="w-full text-left px-4 py-3.5 hover:bg-zap-bg-alt/60 transition-colors group flex items-start gap-3 border-b border-zap-bg-alt/50 last:border-b-0"
                 >
-                  <span className="font-mono text-[9px] text-zap-ink-faint mt-0.5 shrink-0 w-3">
-                    {i + 1}.
-                  </span>
-                  <p className="font-body text-[12px] text-zap-ink-muted group-hover:text-zap-ink transition-colors leading-relaxed flex-1">
-                    {prompt}
-                  </p>
-                  <Send
-                    size={11}
-                    strokeWidth={2}
-                    className="text-zap-ink-faint shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                  />
+                  <span className="font-mono text-[9px] text-zap-ink-faint mt-0.5 shrink-0 w-3">{i + 1}.</span>
+                  <p className="font-body text-[12px] text-zap-ink-muted group-hover:text-zap-ink transition-colors leading-relaxed flex-1">{prompt}</p>
+                  <Send size={11} strokeWidth={2} className="text-zap-ink-faint shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </button>
               ))}
             </div>
@@ -646,7 +595,9 @@ const CategoryDiscoveryPanel: React.FC<CategoryDiscoveryPanelProps> = ({
   );
 };
 
-// ─── Payment Gate Card ────────────────────────────────────────────────────────
+// ─── Payment Gate Card — COMPACT INLINE PILL ──────────────────────────────────
+// Redesigned: no giant card. Slim, inline, badge-like. Amount is a single
+// readable line. Two actions side by side. Enters with a slide+fade.
 
 const PaymentGateCard: React.FC<{
   agent: AgentOption;
@@ -657,78 +608,84 @@ const PaymentGateCard: React.FC<{
   paying: boolean;
   error?: string;
 }> = ({ agent, price, category, onPay, onDecline, paying, error }) => {
-  const { emoji, label } = catMeta(category);
+  const { emoji } = catMeta(category);
+  const agentColor = providerColor(agent.provider);
 
   return (
-    <div className="rounded-2xl border border-zap-bg-alt bg-zap-bg-alt overflow-hidden max-w-sm">
-      <div className="px-4 py-3 border-b border-zap-bg-alt flex items-center gap-2.5">
-        <Zap size={13} className="text-zap-brand" strokeWidth={2.5} />
-        <p className="font-body text-[11px] font-semibold uppercase tracking-[0.12em] text-zap-brand">
-          x402 · Payment Required
-        </p>
-      </div>
-
-      <div className="px-4 pt-5 pb-3 flex items-center gap-3 border-b border-zap-bg-alt">
-        <AgentAvatar agent={agent} size={38} fontSize={13} />
-        <div className="min-w-0 flex-1">
-          <p className="font-body text-[13px] font-semibold text-zap-ink truncate">
-            {agent.name}
-          </p>
-          <p className="font-body text-[10px] text-zap-ink-faint">
-            {emoji} {label} · @{agent.handle}
-          </p>
-        </div>
-      </div>
-
-      <div className="px-4 pb-6 pt-4 space-y-4">
-        <div className="flex items-baseline gap-1.5">
-          <span className="font-body text-3xl font-bold text-zap-ink">
-            ${price.toFixed(2)}
+    <div
+      className="animate-in fade-in slide-in-from-bottom-3 duration-200"
+      style={{ animationFillMode: "both" }}
+    >
+      {/* Compact payment pill */}
+      <div className="inline-flex flex-col gap-0 rounded-2xl border border-zap-bg-alt bg-zap-bg-raised overflow-hidden max-w-[320px] w-full">
+        {/* Top row: agent + price */}
+        <div className="flex items-center gap-2.5 px-3.5 py-2.5">
+          {/* Agent dot + name */}
+          <span
+            className="h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-bold text-black shrink-0"
+            style={{ background: agentColor }}
+          >
+            {providerInitials(agent.provider)}
           </span>
-          <span className="font-body text-sm text-zap-ink-muted">USDC · Stellar</span>
+          <div className="flex-1 min-w-0">
+            <span className="font-body text-[12px] font-semibold text-zap-ink">{agent.name}</span>
+            <span className="font-body text-[10px] text-zap-ink-faint ml-1.5">{emoji} {catMeta(category).label}</span>
+          </div>
+          {/* Price badge — tasteful, not giant */}
+          <div className="flex items-baseline gap-0.5 shrink-0">
+            <span className="font-mono text-[11px] text-zap-ink-faint">$</span>
+            <span className="font-mono text-[15px] font-semibold text-zap-ink leading-none">{price.toFixed(2)}</span>
+            <span className="font-mono text-[9px] text-zap-ink-faint ml-0.5">USDC</span>
+          </div>
         </div>
 
-        <p className="font-body text-[11px] text-zap-ink-muted leading-relaxed">
-          Unlocked via{" "}
-          <strong className="text-zap-ink">{agent.name}</strong> — payment confirmed on-chain.
-        </p>
+        {/* Divider */}
+        <div className="h-px bg-zap-bg-alt mx-0" />
 
+        {/* Error (if any) */}
         {error && (
-          <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-3 py-2.5">
-            <p className="font-body text-xs text-red-500 break-all">{error}</p>
+          <div className="px-3.5 pt-2 pb-0">
+            <p className="font-body text-[10px] text-red-400 leading-relaxed">{error}</p>
           </div>
         )}
 
-        <div className="flex gap-2 pt-2">
+        {/* Action row */}
+        <div className="flex items-center gap-2 px-3 py-2.5">
           <button
             type="button"
             onClick={onPay}
             disabled={paying}
-            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-zap-brand py-3 font-body text-sm font-semibold text-black transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-zap-brand py-2 font-body text-[12px] font-semibold text-black transition-all duration-150 hover:opacity-90 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {paying ? (
-              <Loader2 size={13} className="animate-spin" />
+              <Loader2 size={11} className="animate-spin" />
             ) : (
-              <Zap size={13} strokeWidth={2.5} />
+              <Zap size={11} strokeWidth={2.5} />
             )}
-            {paying ? "Processing…" : `Pay $${price.toFixed(2)}`}
+            {paying ? "Sending…" : "Pay & unlock"}
           </button>
-
           <button
             type="button"
             onClick={onDecline}
             disabled={paying}
-            className="rounded-xl border border-zap-bg-alt px-5 font-body text-sm text-zap-ink-muted hover:text-zap-ink hover:border-zap-bg-alt transition-colors disabled:opacity-40"
+            className="rounded-xl border border-zap-bg-alt px-4 py-2 font-body text-[12px] text-zap-ink-muted hover:text-zap-ink hover:border-zap-bg-alt/60 transition-all duration-150 active:scale-[0.97] disabled:opacity-40"
           >
-            Decline
+            Skip
           </button>
         </div>
       </div>
+
+      {/* x402 label beneath */}
+      <p className="mt-1.5 font-mono text-[9px] text-zap-ink-faint ml-0.5 flex items-center gap-1">
+        <Zap size={8} strokeWidth={2} className="text-zap-brand/60" />
+        x402 · Stellar · on-chain receipt
+      </p>
     </div>
   );
 };
 
 // ─── Transaction Confirmed Bubble ─────────────────────────────────────────────
+// Slimmed down — enters with a scale+fade pop
 
 const TxConfirmedBubble: React.FC<{ txHash: string; agentName: string; price: number }> = ({
   txHash, agentName, price,
@@ -739,33 +696,35 @@ const TxConfirmedBubble: React.FC<{ txHash: string; agentName: string; price: nu
   const copy = () => { navigator.clipboard.writeText(txHash); setCopied(true); setTimeout(() => setCopied(false), 2000); };
 
   return (
-    <div className="flex gap-3 items-start">
-      <div className="shrink-0 h-7 w-7 rounded-full bg-emerald-500/20 flex items-center justify-center mt-0.5">
-        <CheckCircle2 size={13} strokeWidth={2.5} className="text-emerald-500" />
+    <div
+      className="flex gap-2.5 items-center animate-in fade-in zoom-in-95 duration-200"
+      style={{ animationFillMode: "both" }}
+    >
+      <div className="shrink-0 h-5 w-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
+        <CheckCircle2 size={11} strokeWidth={2.5} className="text-emerald-500" />
       </div>
-      <div className="rounded-2xl rounded-tl-sm bg-emerald-500/8 border border-emerald-500/20 px-4 py-3 max-w-sm space-y-2">
-        <p className="font-body text-[12px] font-semibold text-emerald-600 dark:text-emerald-400">
-          Payment confirmed — ${price.toFixed(2)} USDC sent to {agentName}
-        </p>
-        <div className="flex gap-2 pt-1">
-          <button
-            type="button"
-            onClick={copy}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-zap-bg-alt bg-zap-bg px-3 py-1.5 font-body text-[11px] text-zap-ink-muted hover:text-zap-ink transition-colors"
-          >
-            <Copy size={11} strokeWidth={2} />
-            {copied ? "Copied!" : "Copy Hash"}
-          </button>
-          <a
-            href={explorerUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-zap-bg-alt/30 bg-zap-brand/5 px-3 py-1.5 font-body text-[11px] text-zap-brand hover:bg-zap-brand/10 transition-colors"
-          >
-            <ExternalLink size={11} strokeWidth={2} />
-            View on Explorer
-          </a>
-        </div>
+      <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/6 px-3 py-1.5 flex-wrap">
+        <span className="font-body text-[11px] text-emerald-500/90 font-medium">
+          ${price.toFixed(2)} sent to {agentName}
+        </span>
+        <span className="text-emerald-500/30">·</span>
+        <button
+          type="button"
+          onClick={copy}
+          className="font-mono text-[10px] text-emerald-500/60 hover:text-emerald-500 transition-colors flex items-center gap-1"
+        >
+          <Copy size={9} strokeWidth={2} />
+          {copied ? "copied" : shortHash(txHash)}
+        </button>
+        <a
+          href={explorerUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-[10px] text-emerald-500/60 hover:text-emerald-500 transition-colors flex items-center gap-1"
+        >
+          <ExternalLink size={9} strokeWidth={2} />
+          explorer
+        </a>
       </div>
     </div>
   );
@@ -780,12 +739,16 @@ const AgentResponseBubble: React.FC<{
   onCompare: (agent: AgentOption) => void;
   busy: boolean;
   isLatest: boolean;
-}> = ({ msg, compareAgents, onCompare, busy, isLatest }) => {
+  animateIn?: boolean;
+}> = ({ msg, compareAgents, onCompare, busy, isLatest, animateIn = false }) => {
   const { emoji, label } = catMeta(msg.category!);
   const agentColor = providerColor(msg.agentProvider);
 
   return (
-    <div className="flex gap-3 items-start">
+    <div
+      className={`flex gap-3 items-start ${animateIn ? "animate-in fade-in slide-in-from-bottom-2 duration-250" : ""}`}
+      style={animateIn ? { animationFillMode: "both" } : undefined}
+    >
       <span
         className="shrink-0 h-7 w-7 rounded-full flex items-center justify-center text-[9px] font-bold text-black mt-0.5"
         style={{ background: agentColor }}
@@ -803,11 +766,7 @@ const AgentResponseBubble: React.FC<{
         {msg.mediaType === "video" && msg.mediaSrc ? (
           <video
             src={msg.mediaSrc}
-            controls
-            autoPlay
-            loop
-            muted
-            playsInline
+            controls autoPlay loop muted playsInline
             className="w-full rounded-xl max-h-64 object-cover"
           />
         ) : msg.mediaType === "image" && msg.mediaSrc ? (
@@ -815,9 +774,7 @@ const AgentResponseBubble: React.FC<{
             src={msg.mediaSrc}
             alt="AI generated"
             className="w-full rounded-xl max-h-64 object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
-            }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
           />
         ) : (
           <div className="rounded-2xl rounded-tl-sm bg-zap-bg-raised border border-zap-bg-alt px-4 py-3 text-zap-ink">
@@ -829,10 +786,11 @@ const AgentResponseBubble: React.FC<{
           {timeLabel(msg.timestamp)}
           {msg.txHash && ` · TX ${shortHash(msg.txHash)}`}
         </p>
+
         {isLatest && compareAgents.length > 0 && (
-          <div className="pt-1 space-y-2">
-            <p className="font-body text-[10px] text-zap-ink-faint uppercase tracking-[0.1em]">
-              Compare in {label}:
+          <div className="pt-2 space-y-2">
+            <p className="font-mono text-[9px] text-zap-ink-faint uppercase tracking-widest">
+              Try in {label}
             </p>
             <div className="flex flex-wrap gap-2">
               {compareAgents.map(ca => (
@@ -841,14 +799,16 @@ const AgentResponseBubble: React.FC<{
                   type="button"
                   disabled={busy}
                   onClick={() => onCompare(ca)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-zap-bg-alt bg-zap-bg px-3 py-1.5 font-body text-[11px] text-zap-ink-muted hover:border-zap-bg-alt/60 hover:text-zap-ink transition-all disabled:opacity-40"
+                  className="inline-flex items-center gap-2 rounded-xl border border-zap-bg-alt bg-zap-bg-raised px-3 py-2 font-body text-[12px] font-semibold text-zap-ink hover:bg-zap-bg-alt hover:border-zap-brand/30 active:scale-[0.97] transition-all duration-150 disabled:opacity-40 group"
                 >
                   <span
-                    className="h-2 w-2 rounded-full shrink-0"
+                    className="h-2.5 w-2.5 rounded-full shrink-0 ring-2 ring-black/20"
                     style={{ background: providerColor(ca.provider) }}
                   />
                   {ca.name}
-                  <span className="opacity-50 text-[9px]">${priceForAgent(ca).toFixed(2)}</span>
+                  <span className="font-mono text-[10px] text-zap-ink-faint group-hover:text-zap-ink-muted transition-colors">
+                    ${priceForAgent(ca).toFixed(2)}
+                  </span>
                 </button>
               ))}
             </div>
@@ -859,19 +819,30 @@ const AgentResponseBubble: React.FC<{
   );
 };
 
-// ─── Typing Indicator ─────────────────────────────────────────────────────────
+// ─── Typing Indicator — upgraded with glow ring ───────────────────────────────
 
 const TypingIndicator: React.FC<{ agentName: string }> = ({ agentName }) => (
-  <div className="flex gap-3 items-start">
-    <div className="shrink-0 h-7 w-7 rounded-full bg-zap-brand flex items-center justify-center">
-      <Zap size={11} strokeWidth={2.5} className="text-black" />
+  <div
+    className="flex gap-3 items-start animate-in fade-in slide-in-from-bottom-2 duration-200"
+    style={{ animationFillMode: "both" }}
+  >
+    {/* Pulsing glow ring around the zap icon */}
+    <div className="relative shrink-0 mt-0.5">
+      <div className="absolute inset-0 rounded-full bg-zap-brand/30 animate-ping" style={{ animationDuration: "1.4s" }} />
+      <div className="relative h-7 w-7 rounded-full bg-zap-brand flex items-center justify-center z-10">
+        <Zap size={11} strokeWidth={2.5} className="text-black" />
+      </div>
     </div>
     <div className="rounded-2xl rounded-tl-sm bg-zap-bg-raised border border-zap-bg-alt px-4 py-3">
       <div className="flex gap-1.5 items-center h-4">
         {[0, 1, 2].map(i => (
-          <div key={i} className="h-1.5 w-1.5 rounded-full bg-zap-ink-faint animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+          <div
+            key={i}
+            className="h-1.5 w-1.5 rounded-full bg-zap-brand/60 animate-bounce"
+            style={{ animationDelay: `${i * 0.18}s`, animationDuration: "0.9s" }}
+          />
         ))}
-        <span className="font-body text-[10px] text-zap-ink-faint ml-1">{agentName} is thinking…</span>
+        <span className="font-body text-[10px] text-zap-ink-faint ml-2">{agentName} is thinking…</span>
       </div>
     </div>
   </div>
@@ -930,9 +901,7 @@ const AgentSelectorDropdown: React.FC<{
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -948,32 +917,18 @@ const AgentSelectorDropdown: React.FC<{
         onClick={() => setOpen(v => !v)}
         className="flex items-center gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-zap-bg-alt disabled:opacity-40 group"
       >
-        <span
-          className="h-1.5 w-1.5 rounded-full shrink-0"
-          style={{ background: providerColor(selectedAgent.provider) }}
-        />
+        <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: providerColor(selectedAgent.provider) }} />
         <span className="font-body text-[11px] text-zap-ink-muted truncate max-w-[80px] group-hover:text-zap-ink transition-colors">
           {selectedAgent.name}
         </span>
-        <span className="font-mono text-[10px] text-zap-ink-faint">
-          ${price.toFixed(2)}
-        </span>
-        <ChevronDown
-          size={10}
-          strokeWidth={2}
-          className={`text-zap-ink-faint transition-transform duration-150 ${open ? "rotate-180" : ""}`}
-        />
+        <span className="font-mono text-[10px] text-zap-ink-faint">${price.toFixed(2)}</span>
+        <ChevronDown size={10} strokeWidth={2} className={`text-zap-ink-faint transition-transform duration-150 ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
-        <div
-          className="fixed z-[9999] mt-1 w-56 rounded-2xl border border-zap-bg-alt bg-zap-bg-raised shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-100"
-          style={{ top: "auto", left: "auto" }}
-        >
+        <div className="fixed z-[9999] mt-1 w-56 rounded-2xl border border-zap-bg-alt bg-zap-bg-raised shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-100" style={{ top: "auto", left: "auto" }}>
           <div className="px-3 py-2 border-b border-zap-bg-alt">
-            <p className="font-mono text-[9px] uppercase tracking-widest text-zap-ink-faint">
-              Select Agent
-            </p>
+            <p className="font-mono text-[9px] uppercase tracking-widest text-zap-ink-faint">Select Agent</p>
           </div>
           <div className="max-h-52 overflow-y-auto overscroll-contain">
             {allAgents.map(agent => {
@@ -988,20 +943,12 @@ const AgentSelectorDropdown: React.FC<{
                 >
                   <AgentAvatar agent={agent} size={22} fontSize={8} />
                   <div className="flex-1 min-w-0">
-                    <p className={`font-body text-[11px] font-semibold truncate ${isSelected ? "text-zap-brand" : "text-zap-ink"}`}>
-                      {agent.name}
-                    </p>
-                    <p className="font-body text-[9px] text-zap-ink-faint truncate">
-                      {agent.provider}
-                    </p>
+                    <p className={`font-body text-[11px] font-semibold truncate ${isSelected ? "text-zap-brand" : "text-zap-ink"}`}>{agent.name}</p>
+                    <p className="font-body text-[9px] text-zap-ink-faint truncate">{agent.provider}</p>
                   </div>
                   <div className="shrink-0 flex items-center gap-1">
-                    <span className="font-mono text-[9px] text-zap-ink-faint">
-                      ${agentPrice.toFixed(2)}
-                    </span>
-                    {isSelected && (
-                      <CheckCircle2 size={10} strokeWidth={2.5} className="text-zap-brand" />
-                    )}
+                    <span className="font-mono text-[9px] text-zap-ink-faint">${agentPrice.toFixed(2)}</span>
+                    {isSelected && <CheckCircle2 size={10} strokeWidth={2.5} className="text-zap-brand" />}
                   </div>
                 </button>
               );
@@ -1103,13 +1050,7 @@ const InputBar: React.FC<InputBarProps> = ({
             >
               <ImageIcon size={15} strokeWidth={1.75} />
             </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={onImageAttach}
-            />
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onImageAttach} />
             <button
               type="button"
               onClick={onVoiceToggle}
@@ -1131,7 +1072,7 @@ const InputBar: React.FC<InputBarProps> = ({
               type="button"
               onClick={onSend}
               disabled={(!value.trim() && !isVoice) || busy}
-              className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-zap-ink text-zap-bg transition-opacity hover:opacity-80 disabled:opacity-30"
+              className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-zap-ink text-zap-bg transition-all duration-150 hover:opacity-80 active:scale-95 disabled:opacity-30"
             >
               {busy ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} strokeWidth={2} />}
             </button>
@@ -1141,27 +1082,6 @@ const InputBar: React.FC<InputBarProps> = ({
     </div>
   );
 };
-
-// ─── Mission Banner ───────────────────────────────────────────────────────────
-
-const MissionBanner: React.FC = () => (
-  <div className="w-full max-w-xl">
-    <div className="rounded-2xl border border-zap-bg-alt bg-zap-bg-raised/50 px-5 py-4">
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { stat: "< 1s", label: "Payments on Stellar" },
-          { stat: "Pay/req", label: "No subscription" },
-          { stat: "On-chain", label: "Every receipt" },
-        ].map(({ stat, label }) => (
-          <div key={stat} className="text-center">
-            <p className="font-body text-[13px] font-semibold text-zap-ink">{stat}</p>
-            <p className="font-body text-[9px] text-zap-ink-faint mt-0.5">{label}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-);
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -1177,28 +1097,29 @@ const TerminalChatPage: React.FC = () => {
 
   const { agents: rawAgents, loading: agentsLoading } = useOnChainAgents({ onlyAgents: true });
 
-function categoryPrice(category: string): number {
-  switch (category) {
-    case "chat":     return 0.10;
-    case "research": return 0.10;
-    case "code":     return 0.15;
-    case "image":    return 0.50;
-    case "video":    return 0.75;
-    default:         return 0.10;
+  function categoryPrice(category: string): number {
+    switch (category) {
+      case "chat":     return 0.10;
+      case "research": return 0.10;
+      case "code":     return 0.15;
+      case "image":    return 0.50;
+      case "video":    return 0.75;
+      default:         return 0.10;
+    }
   }
-}
-const allAgents: AgentOption[] = rawAgents.length > 0
-  ? rawAgents.map(a => ({
-      id: a.id,
-      name: a.name,
-      handle: a.handle,
-      provider: a.provider,
-      category: a.category,
-      imageUrl: a.imageUrl,
-      walletAddress: a.walletAddress || undefined,
-      priceUsdc: categoryPrice(a.category), 
-    }))
-  : [CLAUDE_DEFAULT];
+
+  const allAgents: AgentOption[] = rawAgents.length > 0
+    ? rawAgents.map(a => ({
+        id: a.id,
+        name: a.name,
+        handle: a.handle,
+        provider: a.provider,
+        category: a.category,
+        imageUrl: a.imageUrl,
+        walletAddress: a.walletAddress || undefined,
+        priceUsdc: categoryPrice(a.category),
+      }))
+    : [CLAUDE_DEFAULT];
 
   const [conversations, setConversations] = useState<Conversation[]>(loadConversations);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
@@ -1222,6 +1143,8 @@ const allAgents: AgentOption[] = rawAgents.length > 0
   const [paying, setPaying] = useState(false);
   const [fallbackIds, setFallbackIds] = useState<Set<string>>(new Set());
   const [fromZap, setFromZap] = useState(false);
+  // Track newest message id for entrance animation
+  const [latestMsgId, setLatestMsgId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1331,6 +1254,7 @@ const allAgents: AgentOption[] = rawAgents.length > 0
   }, [location.key]);
 
   const addMessageToConv = useCallback((convId: string, msg: ConvMessage) => {
+    setLatestMsgId(msg.id);
     setConversations(prev => prev.map(c => {
       if (c.id !== convId) return c;
       return {
@@ -1517,7 +1441,7 @@ const allAgents: AgentOption[] = rawAgents.length > 0
     try {
       const recipientAddress = agent.walletAddress;
       if (!recipientAddress) {
-        setPaymentError("This agent has no wallet address configured and cannot receive payments.");
+        setPaymentError("No wallet address configured for this agent.");
         setPaying(false);
         return;
       }
@@ -1527,7 +1451,7 @@ const allAgents: AgentOption[] = rawAgents.length > 0
       const msg = err instanceof Error ? err.message : String(err);
       console.error("Payment error RAW:", msg);
       const friendly = msg.includes("InsufficientBalance") || msg.includes("#10")
-        ? "Insufficient wallet balance. Please top up and retry."
+        ? "Insufficient balance. Top up and retry."
         : msg.includes("Missing creator")
           ? "Agent has no wallet address configured."
           : msg;
@@ -1670,6 +1594,8 @@ const allAgents: AgentOption[] = rawAgents.length > 0
   }, [voiceState, startVoiceRound]);
 
   const renderMessage = (msg: ConvMessage, conv: Conversation, idx: number) => {
+    const isNew = msg.id === latestMsgId;
+
     if (msg.content.startsWith("__TX_CONFIRMED__:")) {
       const parts = msg.content.split(":");
       const txHash = parts[1];
@@ -1679,7 +1605,11 @@ const allAgents: AgentOption[] = rawAgents.length > 0
 
     if (msg.role === "user") {
       return (
-        <div key={msg.id} className="flex gap-3 flex-row-reverse items-start">
+        <div
+          key={msg.id}
+          className={`flex gap-3 flex-row-reverse items-start ${isNew ? "animate-in fade-in slide-in-from-right-3 duration-200" : ""}`}
+          style={isNew ? { animationFillMode: "both" } : undefined}
+        >
           <div className="shrink-0 h-7 w-7 rounded-full bg-zap-ink flex items-center justify-center text-[9px] font-bold text-zap-bg mt-0.5">
             YOU
           </div>
@@ -1712,6 +1642,7 @@ const allAgents: AgentOption[] = rawAgents.length > 0
         onCompare={handleCompare}
         busy={busy || !!pendingPayment}
         isLatest={isLatest}
+        animateIn={isNew}
       />
     );
   };
@@ -1749,13 +1680,14 @@ const allAgents: AgentOption[] = rawAgents.length > 0
         {isCenterState && (
           <div className="flex flex-col items-center justify-center flex-1 text-center gap-6">
             {!fromZap && (
-             <div className="flex flex-col items-center gap-2">
-  <Logo className="h-8 w-auto text-zap-ink" />
-  <p className="font-body text-sm text-zap-ink-muted">
-    pay-per-query AI marketplace
-  </p>
-</div>
+              <div className="flex flex-col items-center gap-2">
+                <Logo className="h-8 w-auto text-zap-ink" />
+                <p className="font-body text-sm text-zap-ink-muted">
+                  pay-per-query AI marketplace powered by x402 on Stellar
+                </p>
+              </div>
             )}
+           
 
             <div className="w-full max-w-xl">
               <InputBar
@@ -1770,7 +1702,7 @@ const allAgents: AgentOption[] = rawAgents.length > 0
               agentsLoading={agentsLoading}
               onSelectPrompt={handleDiscoverySelect}
             />
-            <p className="mt-20 text-center font-body text-[10px] text-zap-ink-faint">Powered by x402 on Stellar</p>
+          
           </div>
         )}
 
@@ -1802,11 +1734,9 @@ const allAgents: AgentOption[] = rawAgents.length > 0
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain pb-4 space-y-4">
               {activeConv?.messages.map((msg, idx) => renderMessage(msg, activeConv, idx))}
 
+              {/* ── Compact inline payment gate ── */}
               {pendingPayment && (!activeConvId || pendingPayment.convId === activeConvId) && (
-                <div className="flex gap-3 items-start">
-                  <div className="shrink-0 h-7 w-7 rounded-full bg-zap-brand flex items-center justify-center mt-0.5">
-                    <Zap size={11} strokeWidth={2.5} className="text-black" />
-                  </div>
+                <div className="flex gap-3 items-start pl-10">
                   <PaymentGateCard
                     agent={pendingPayment.agent}
                     price={pendingPayment.price}

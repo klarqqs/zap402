@@ -49,16 +49,13 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   };
 
   const handleNewChat = () => {
-    // FIX: New chat button explicitly passes newChat: true to reset state
     onNavigate();
     navigate("/terminal/chat", { state: { newChat: true } });
   };
 
   const handleChatNavClick = () => {
-    // FIX: Clicking Chat in nav just navigates — NO state passed.
-    // TerminalChatPage treats no-state navigation as "preserve current state".
     onNavigate();
-    navigate("/terminal/chat"); // intentionally NO state
+    navigate("/terminal/chat");
   };
 
   return (
@@ -81,20 +78,25 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         ].join(" ")}
       >
         <nav
-          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 py-12"
+          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 py-4"
           aria-label="Workspace"
         >
-          {/* ── New Chat button — always starts fresh ── */}
-          <div className="mb-4">
+          {/* ── New Chat — same row style as nav items, accent color on icon/text ── */}
+          {/* <div className="">
             <button
               type="button"
               onClick={handleNewChat}
-              className="flex h-10 w-full items-center justify-center gap-1 rounded-2xl bg-zap-brand px-4 font-body text-[15px] font-normal text-black transition-all hover:opacity-90 active:scale-[0.985]"
+              className="flex h-10 w-full items-center gap-1 ounded-lg px-3 font-body text-[15px] text-zap-ink"
             >
-              <Plus size={16} strokeWidth={2} className="shrink-0" aria-hidden />
-              New chat
+              <Plus
+                size={21}
+                strokeWidth={1.75}
+                className="shrink-0 text-zap-ink group-hover:text-zap-ink transition-colors"
+                aria-hidden
+              />
+              New
             </button>
-          </div>
+          </div> */}
 
           {SIDEBAR_SECTIONS.map((section, sectionIdx) => (
             <div
@@ -130,7 +132,6 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   const to = `/terminal/${item.slug}`;
                   const active = isTerminalActive(slug);
 
-                  // FIX: Chat nav uses custom handler that preserves state
                   if (slug === "chat") {
                     return (
                       <button
