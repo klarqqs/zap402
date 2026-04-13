@@ -58,16 +58,19 @@ const ProfilePurchasesContent: React.FC<ProfilePurchasesContentProps> = ({
   const [activeTab, setActiveTab] = useState<"requests" | "content">("requests");
 
   useEffect(() => {
-if (!publicKey) {
-    Promise.resolve().then(() => {
-      setRows([]);
-      setLoading(false);
-    });
-    return;
-  }
+    if (!publicKey) {
+      Promise.resolve().then(() => {
+        setRows([]);
+        setLoading(false);
+      });
+      return;
+    }
     let cancelled = false;
-    setLoading(true);
-    setError(null);
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      setLoading(true);
+      setError(null);
+    });
     getBuyerUnlockLibrary(publicKey)
       .then((data) => {
         if (!cancelled) setRows(data);
@@ -83,11 +86,11 @@ if (!publicKey) {
     };
   }, [publicKey]);
 
-useEffect(() => {
-  if (!publicKey) {
-    Promise.resolve().then(() => setAskRows([]));
-    return;
-  }
+  useEffect(() => {
+    if (!publicKey) {
+      Promise.resolve().then(() => setAskRows([]));
+      return;
+    }
     let cancelled = false;
     getFanAskRequests(publicKey)
       .then((data) => {
@@ -134,12 +137,14 @@ useEffect(() => {
   }, [creatorAddresses, getProfile]);
 
   useEffect(() => {
-if (!publicKey || creatorAddresses.length === 0) {
-    Promise.resolve().then(() => setItemDetails({}));
-    return;
-  }
+    if (!publicKey || creatorAddresses.length === 0) {
+      Promise.resolve().then(() => setItemDetails({}));
+      return;
+    }
     let cancelled = false;
-    setDetailsLoading(true);
+    Promise.resolve().then(() => {
+      if (!cancelled) setDetailsLoading(true);
+    });
     Promise.all(
       creatorAddresses.map((addr) => getProfileUnlockItems(addr, publicKey)),
     )
@@ -217,8 +222,8 @@ if (!publicKey || creatorAddresses.length === 0) {
             type="button"
             onClick={() => setActiveTab("requests")}
             className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${activeTab === "requests"
-                ? "bg-zap-brand text-white"
-                : "text-zap-ink-muted hover:bg-zap-bg-alt"
+              ? "bg-zap-brand text-white"
+              : "text-zap-ink-muted hover:bg-zap-bg-alt"
               }`}
           >
             Requests
@@ -227,8 +232,8 @@ if (!publicKey || creatorAddresses.length === 0) {
             type="button"
             onClick={() => setActiveTab("content")}
             className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${activeTab === "content"
-                ? "bg-zap-brand text-white"
-                : "text-zap-ink-muted hover:bg-zap-bg-alt"
+              ? "bg-zap-brand text-white"
+              : "text-zap-ink-muted hover:bg-zap-bg-alt"
               }`}
           >
             Content
