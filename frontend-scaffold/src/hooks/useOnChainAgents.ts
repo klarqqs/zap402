@@ -52,17 +52,18 @@ export function useOnChainAgents(options: UseOnChainAgentsOptions = {}) {
   useEffect(() => {
     let cancelled = false;
     if (networkLoading) {
-     Promise.resolve().then(() => setLoading(true));
+      Promise.resolve().then(() => setLoading(true));
       return;
     }
     if (networkError) {
-      setError(networkError);
-      setLoading(false);
+      Promise.resolve().then(() => {
+        setError(networkError);
+        setLoading(false);
+      });
       return;
     }
 
     const load = async () => {
-      // Preferred path: on-chain profile directory pagination.
       try {
         const page = await getProfilesPage(0, 500);
         if (page.length > 0) {
@@ -83,9 +84,11 @@ export function useOnChainAgents(options: UseOnChainAgentsOptions = {}) {
           for (const row of rows) {
             deduped.set(row.handle, row);
           }
-          setAgents(Array.from(deduped.values()));
-          setLoading(false);
-          setError(null);
+          if (!cancelled) {
+            setAgents(Array.from(deduped.values()));
+            setLoading(false);
+            setError(null);
+          }
           return;
         }
       } catch {
@@ -95,14 +98,20 @@ export function useOnChainAgents(options: UseOnChainAgentsOptions = {}) {
       const usernames = new Set(entries.map((e) => e.username).filter(Boolean));
       const usernameList = Array.from(usernames);
       if (usernameList.length === 0) {
-        setAgents([]);
-        setLoading(false);
-        setError(null);
+        if (!cancelled) {
+          setAgents([]);
+          setLoading(false);
+          setError(null);
+        }
         return;
       }
 
-     Promise.resolve().then(() => setLoading(true));
-      setError(null);
+      Promise.resolve().then(() => {
+        if (!cancelled) {
+          setLoading(true);
+          setError(null);
+        }
+      });
 
       return Promise.allSettled(
         usernameList.map(async (username) => {
@@ -162,4 +171,3 @@ export function useOnChainAgents(options: UseOnChainAgentsOptions = {}) {
     [agents, loading, error],
   );
 }
-

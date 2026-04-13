@@ -23,11 +23,6 @@ import {
 import type { AskRequest } from "@/types/ask.types";
 import { useInteractionHistoryStore } from "@/state/interactionHistoryStore";
 
-/**
- * Starter set (keeps UX focused):
- * - 1 chat-friendly type (Inbox): answer_question
- * - 6 deliverables (Requests queue): voice/video/thread/hooks/captions/feedback
- */
 const FEATURED_REQUEST_IDS = new Set([
   "answer_question",
   "rewrite_text",
@@ -40,9 +35,7 @@ export interface CloneChatProps {
   creatorName: string;
   creatorAddress: string;
   pricePerMessageUsdc?: string;
-  /** When false, show coming-soon state */
   demoMode?: boolean;
-  /** Compact embed for Zap page where outer section already has heading/copy. */
   compact?: boolean;
   capabilitySnippets?: string[];
 }
@@ -79,7 +72,6 @@ const CloneChat: React.FC<CloneChatProps> = ({
     FEATURED_REQUEST_IDS.has(t.id),
   );
   const visibleRequests = showAllRequests ? ASK_REQUEST_TYPES : featuredRequests;
-  const emojiQuickSet = ["🔥", "🙏", "💡", "🚀", "❤️", "👏", "😂", "🎯"];
   const requestTxStatus =
     layer23.status === "signing"
       ? "signing"
@@ -196,7 +188,6 @@ const CloneChat: React.FC<CloneChatProps> = ({
       const prompt = message.trim();
       setMessage("");
 
-      // Get real AI response after payment is confirmed
       let aiReply: string;
       try {
         const aiResp = await requestCloneReply({ message: prompt, creatorName });
@@ -258,12 +249,14 @@ const CloneChat: React.FC<CloneChatProps> = ({
             <h2 className="font-body text-xl font-semibold tracking-tight text-zap-ink md:text-2xl">
               Ask {creatorName}
             </h2>
-            <span className="rounded-full border border-zap-bg-alt bg-zap-bg-alt px-2.5 py-0.5 font-body text-[10px] font-semibold uppercase tracking-wider text-zap-ink
+            {/* FIX 1: was text content inside className string */}
+            <span className="rounded-full border border-zap-bg-alt bg-zap-bg-alt px-2.5 py-0.5 font-body text-[10px] font-semibold uppercase tracking-wider text-zap-ink">
               {demoMode ? "Demo" : "Live"}
             </span>
           </div>
 
-          <p className="font-body text-sm leading-relaxed text-zap-ink
+          {/* FIX 2: was text content inside className string */}
+          <p className="font-body text-sm leading-relaxed text-zap-ink">
             Pick a request type, pay a small fee, and send it directly to {creatorName}. Each request
             triggers payment before inference.
           </p>
@@ -295,16 +288,10 @@ const CloneChat: React.FC<CloneChatProps> = ({
 
       <div className="space-y-2 pb-0">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="font-body text-[11px] font-semibold uppercase tracking-[0.12em] text-zap-ink
+          {/* FIX 3: was text content inside className string */}
+          <p className="font-body text-[11px] font-semibold uppercase tracking-[0.12em] text-zap-ink">
             Quick start (hot)
           </p>
-          {/* <button
-            type="button"
-            onClick={() => setShowAllRequests((v) => !v)}
-            className="font-body text-[11px] font-semibold uppercase tracking-[0.08em] text-zap-teal"
-          >
-            {showAllRequests ? "Show featured" : `Show all ${ASK_REQUEST_TYPES.length}`}
-          </button> */}
         </div>
         <div className="flex flex-wrap gap-2">
           {unifiedQuickStarts.map((item) => {
@@ -316,12 +303,11 @@ const CloneChat: React.FC<CloneChatProps> = ({
                 onClick={() => {
                   setSelectedQuickId(item.id);
                   setSelectedTypeId(item.requestTypeId);
-                  // setMessage(item.label);
                 }}
                 className={`inline-flex max-w-full items-center gap-1.5 rounded-full border px-3 py-2 text-left font-body text-[11px] font-semibold leading-snug tracking-[0.02em] transition-colors ${
                   active
                     ? "border-zap-accent bg-zap-accent/12 text-zap-ink shadow-[0_0_0_1px_rgba(234,88,12,0.15)] dark:shadow-[0_0_0_1px_rgba(255,94,91,0.2)]"
-                    : "border-zap-bg-alt bg-zap-bg-alt text-zap-ink:border-zap-bg-alt-bright hover:bg-zap-bg-overlay"
+                    : "border-zap-bg-alt bg-zap-bg-alt text-zap-ink hover:bg-zap-bg-overlay"
                 }`}
               >
                 <span className="min-w-0">
@@ -353,7 +339,8 @@ const CloneChat: React.FC<CloneChatProps> = ({
         </div>
       ) : (
         <div className="rounded-2xl border border-[var(--card-border-soft)] bg-zap-bg-alt/30 p-3">
-          <p className="text-sm text-zap-ink
+          {/* FIX 4: was text content inside className string */}
+          <p className="text-sm text-zap-ink">
             Say hi to start. Continue in the same single-agent conversation thread.
           </p>
         </div>
@@ -369,25 +356,11 @@ const CloneChat: React.FC<CloneChatProps> = ({
         maxLength={160}
         className="resize-none"
       />
-      <p className="font-body text-xs text-zap-ink
+
+      {/* FIX 5: was text content + JSX expression inside className string */}
+      <p className="font-body text-xs text-zap-ink">
         Estimated charge: {effectivePriceUsdc} USDC (cheap model-like pricing, adjusted by prompt length).
       </p>
-      {/* <div className="flex flex-wrap items-center gap-2">
-        <span className="font-body text-[10px] uppercase tracking-[0.08em] text-zap-ink-faint">
-          Quick emoji
-        </span>
-        {emojiQuickSet.map((emoji) => (
-          <button
-            key={emoji}
-            type="button"
-            onClick={() => setMessage((prev) => `${prev}${emoji}`)}
-            className="inline-flex h-7 min-w-7 items-center justify-center rounded-full border border-zap-bg-alt bg-zap-bg-alt px-2 text-sm transition-colors hover:bg-zap-bg-overlay"
-            aria-label={`Add ${emoji}`}
-          >
-            {emoji}
-          </button>
-        ))}
-      </div> */}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-2">
         <Button

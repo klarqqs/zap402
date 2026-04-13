@@ -37,7 +37,6 @@ export function useSearch() {
       return;
     }
 
-    // If we already have an exact match in the network slice, skip fallback lookup.
     const hasExactNetworkHit = creators.some(
       (c) => (c.username || "").toLowerCase() === normalized,
     );
@@ -50,7 +49,11 @@ export function useSearch() {
     }
 
     let cancelled = false;
-    setLookupLoading(true);
+    // FIX: defer setLookupLoading(true) — was direct setState in effect body
+    Promise.resolve().then(() => {
+      if (!cancelled) setLookupLoading(true);
+    });
+
     const id = window.setTimeout(() => {
       void getProfileByUsername(normalized)
         .then((p: Profile) => {
@@ -66,15 +69,11 @@ export function useSearch() {
         })
         .catch(() => {
           if (cancelled) return;
-          Promise.resolve().then(() => {
-            setLookupResult(null);
-          });
+          setLookupResult(null);
         })
         .finally(() => {
           if (cancelled) return;
-          Promise.resolve().then(() => {
-            setLookupLoading(false);
-          });
+          setLookupLoading(false);
         });
     }, 200);
 
