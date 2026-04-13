@@ -52,7 +52,7 @@ export function useOnChainAgents(options: UseOnChainAgentsOptions = {}) {
   useEffect(() => {
     let cancelled = false;
     if (networkLoading) {
-      setLoading(true);
+     Promise.resolve().then(() => setLoading(true));
       return;
     }
     if (networkError) {
@@ -101,7 +101,7 @@ export function useOnChainAgents(options: UseOnChainAgentsOptions = {}) {
         return;
       }
 
-      setLoading(true);
+     Promise.resolve().then(() => setLoading(true));
       setError(null);
 
       return Promise.allSettled(

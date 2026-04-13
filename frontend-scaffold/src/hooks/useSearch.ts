@@ -21,15 +21,19 @@ export function useSearch() {
   useEffect(() => {
     const raw = query.trim();
     if (!raw) {
-      setLookupResult(null);
-      setLookupLoading(false);
+      Promise.resolve().then(() => {
+        setLookupResult(null);
+        setLookupLoading(false);
+      });
       return;
     }
 
     const normalized = raw.replace(/^@+/, "").trim().toLowerCase();
     if (!normalized) {
-      setLookupResult(null);
-      setLookupLoading(false);
+      Promise.resolve().then(() => {
+        setLookupResult(null);
+        setLookupLoading(false);
+      });
       return;
     }
 
@@ -38,8 +42,10 @@ export function useSearch() {
       (c) => (c.username || "").toLowerCase() === normalized,
     );
     if (hasExactNetworkHit) {
-      setLookupResult(null);
-      setLookupLoading(false);
+      Promise.resolve().then(() => {
+        setLookupResult(null);
+        setLookupLoading(false);
+      });
       return;
     }
 
@@ -60,11 +66,15 @@ export function useSearch() {
         })
         .catch(() => {
           if (cancelled) return;
-          setLookupResult(null);
+          Promise.resolve().then(() => {
+            setLookupResult(null);
+          });
         })
         .finally(() => {
           if (cancelled) return;
-          setLookupLoading(false);
+          Promise.resolve().then(() => {
+            setLookupLoading(false);
+          });
         });
     }, 200);
 

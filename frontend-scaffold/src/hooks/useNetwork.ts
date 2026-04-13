@@ -110,7 +110,7 @@ export const useNetwork = (): NetworkData => {
 
     isFetchingRef.current = true;
     if (!hasDataRef.current) {
-      setLoading(true);
+     Promise.resolve().then(() => setLoading(true));
     }
     setError(null);
 

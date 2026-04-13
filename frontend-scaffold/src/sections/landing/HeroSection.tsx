@@ -71,7 +71,7 @@ const HeroSection: React.FC = () => {
     hasFired.current = true;
 
     const run = async () => {
-      setLoading(true);
+     Promise.resolve().then(() => setLoading(true));
       const data: ProfileFormData = {
         username: generateUsername(publicKey),
         displayName: generateDisplayName(publicKey),

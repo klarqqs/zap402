@@ -19,7 +19,7 @@ export function useCreatorUnlocks() {
       setItems([]);
       return;
     }
-    setLoading(true);
+   Promise.resolve().then(() => setLoading(true));
     setError(null);
     try {
       const data = await unlockService.getCreatorUnlockItems(publicKey);
@@ -108,7 +108,7 @@ export function useProfileUnlocks(creatorAddress: string) {
     let cancelled = false;
     const timerId = window.setTimeout(() => {
       if (cancelled) return;
-      setLoading(true);
+     Promise.resolve().then(() => setLoading(true));
       setError(null);
       unlockService
         .getProfileUnlockItems(creatorAddress, buyerAddress)

@@ -344,7 +344,7 @@ const ZapPage: React.FC = () => {
 
   const fetchCreator = useCallback(async () => {
     if (!username) { setLoading(false); return; }
-    setLoading(true);
+   Promise.resolve().then(() => setLoading(true));
     setFetchError(null);
     try {
       const profile = await getProfileByUsername(username);

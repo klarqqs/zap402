@@ -9,13 +9,13 @@ export function useScrollReveal(options?: IntersectionObserverInit) {
     if (!el) return;
 
     if (typeof IntersectionObserver === "undefined") {
-      setVisible(true);
+       Promise.resolve().then(() => setVisible(true));
       return;
     }
 
     const obs = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) setVisible(true);
+        if (entry.isIntersecting)  Promise.resolve().then(() => setVisible(true));
       },
       { threshold: 0.06, rootMargin: "0px 0px -24px 0px", ...options }
     );

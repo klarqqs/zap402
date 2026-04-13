@@ -271,10 +271,12 @@ const AskTerminalPanel: React.FC<AskTerminalPanelProps> = ({
 
   useEffect(() => {
     if (!isInboxRoute || didInitialInboxSelect.current || threads.length === 0) return;
-    if (selectedId === null) {
-      setSelectedId(threads[0]!.id);
-      didInitialInboxSelect.current = true;
-    }
+if (selectedId === null) {
+  Promise.resolve().then(() => {
+    setSelectedId(threads[0]!.id);
+    didInitialInboxSelect.current = true;
+  });
+}
   }, [isInboxRoute, threads, selectedId]);
   const totalUsdc = threads
     .reduce((sum, t) => sum + Number.parseFloat(t.amountUsdc || "0"), 0)

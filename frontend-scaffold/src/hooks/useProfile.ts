@@ -42,7 +42,7 @@ export const useProfile = () => {
         const { setProfile, clearProfile, setLoading, setError } =
           useProfileStore.getState();
 
-        setLoading(true);
+       Promise.resolve().then(() => setLoading(true));
         setError(null);
 
         try {

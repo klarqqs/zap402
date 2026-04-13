@@ -131,7 +131,9 @@ function loadDraftInput(): string {
   try { return localStorage.getItem(DRAFT_INPUT_KEY) ?? ""; } catch { return ""; }
 }
 function saveDraftInput(val: string) {
-  try { localStorage.setItem(DRAFT_INPUT_KEY, val); } catch { }
+  try { localStorage.setItem(DRAFT_INPUT_KEY, val); } catch (e) {
+    void e;
+  }
 }
 
 // ─── Category Classifier ──────────────────────────────────────────────────────
@@ -274,12 +276,12 @@ function catMeta(cat: CategoryType) {
 
 function categoryPrice(category: string): number {
   switch (category) {
-    case "chat":     return 0.10;
+    case "chat": return 0.10;
     case "research": return 0.10;
-    case "code":     return 0.15;
-    case "image":    return 0.50;
-    case "video":    return 0.75;
-    default:         return 0.10;
+    case "code": return 0.15;
+    case "image": return 0.50;
+    case "video": return 0.75;
+    default: return 0.10;
   }
 }
 
@@ -300,7 +302,9 @@ function loadConversations(): Conversation[] {
 }
 
 function saveConversations(convos: Conversation[]) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(convos)); } catch { }
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(convos)); } catch (e) {
+    void e;
+  }
 }
 
 // ─── API Calls ────────────────────────────────────────────────────────────────
@@ -407,7 +411,7 @@ async function getResponse(
       const text = await callGroq(history, fallbackSystem);
       return { text, fallback: true };
     } catch (fallbackErr) {
-      throw new Error(`Both primary and fallback models failed. Last error: ${fallbackErr}`);
+      throw new Error(`Both primary and fallback models failed. Last error: ${fallbackErr}`, { cause: fallbackErr });
     }
   }
 }
@@ -1099,26 +1103,26 @@ const TerminalChatPage: React.FC = () => {
 
   function categoryPrice(category: string): number {
     switch (category) {
-      case "chat":     return 0.10;
+      case "chat": return 0.10;
       case "research": return 0.10;
-      case "code":     return 0.15;
-      case "image":    return 0.50;
-      case "video":    return 0.75;
-      default:         return 0.10;
+      case "code": return 0.15;
+      case "image": return 0.50;
+      case "video": return 0.75;
+      default: return 0.10;
     }
   }
 
   const allAgents: AgentOption[] = rawAgents.length > 0
     ? rawAgents.map(a => ({
-        id: a.id,
-        name: a.name,
-        handle: a.handle,
-        provider: a.provider,
-        category: a.category,
-        imageUrl: a.imageUrl,
-        walletAddress: a.walletAddress || undefined,
-        priceUsdc: categoryPrice(a.category),
-      }))
+      id: a.id,
+      name: a.name,
+      handle: a.handle,
+      provider: a.provider,
+      category: a.category,
+      imageUrl: a.imageUrl,
+      walletAddress: a.walletAddress || undefined,
+      priceUsdc: categoryPrice(a.category),
+    }))
     : [CLAUDE_DEFAULT];
 
   const [conversations, setConversations] = useState<Conversation[]>(loadConversations);
@@ -1437,7 +1441,7 @@ const TerminalChatPage: React.FC = () => {
     setPaying(true);
     setPaymentError(null);
 
-    let txHash: string | null = null;
+    let txHash: string;
     try {
       const recipientAddress = agent.walletAddress;
       if (!recipientAddress) {
@@ -1445,7 +1449,10 @@ const TerminalChatPage: React.FC = () => {
         setPaying(false);
         return;
       }
-      txHash = await payToAsk(recipientAddress, prompt, price.toFixed(2));
+
+      const result = await payToAsk(recipientAddress, prompt, price.toFixed(2));
+      if (!result) throw new Error("...");
+      txHash = result;
       if (!txHash) throw new Error("Payment failed — no transaction hash returned.");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -1687,7 +1694,7 @@ const TerminalChatPage: React.FC = () => {
                 </p>
               </div>
             )}
-           
+
 
             <div className="w-full max-w-xl">
               <InputBar
@@ -1702,7 +1709,7 @@ const TerminalChatPage: React.FC = () => {
               agentsLoading={agentsLoading}
               onSelectPrompt={handleDiscoverySelect}
             />
-          
+
           </div>
         )}
 

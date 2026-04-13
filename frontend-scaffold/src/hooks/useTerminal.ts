@@ -54,7 +54,7 @@ export const useTerminal = (): TerminalData => {
 
     isFetchingRef.current = true;
     if (!hasDataRef.current) {
-      setLoading(true);
+     Promise.resolve().then(() => setLoading(true));
     }
     setError(null);
 
