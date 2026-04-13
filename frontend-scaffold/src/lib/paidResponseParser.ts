@@ -18,7 +18,7 @@ import type {
   ContentCalendarWeek,
   ResearchSection,
 } from "@/types/PaidResponseModels";
-import type { ResultCard } from "@/state/Chatstore";
+import type { ResultCard } from "@/state/chatStore";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // JSON EXTRACTION

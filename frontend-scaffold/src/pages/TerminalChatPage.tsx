@@ -1154,7 +1154,7 @@ const TerminalChatPage: React.FC = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const voiceLoopRef = useRef(false);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+const recognitionRef = useRef<any>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const transcriptRef = useRef("");
   const didHandleStateRef = useRef(false);
@@ -1453,7 +1453,7 @@ const TerminalChatPage: React.FC = () => {
       const result = await payToAsk(recipientAddress, prompt, price.toFixed(2));
       if (!result) throw new Error("...");
       txHash = result;
-      
+
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("Payment error RAW:", msg);
@@ -1555,13 +1555,13 @@ const TerminalChatPage: React.FC = () => {
   }, [allAgents]);
 
   const startVoiceRound = useCallback(async () => {
-    const SR = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) return;
     setVoiceState("connecting");
     setTranscript(""); transcriptRef.current = "";
     try { await navigator.mediaDevices.getUserMedia({ audio: true }); }
     catch { setVoiceState("idle"); voiceLoopRef.current = false; return; }
-    const rec = new SR();
+    const rec = new SR() as SpeechRecognition;
     rec.continuous = true; rec.interimResults = true; rec.lang = "en-US";
     recognitionRef.current = rec;
     rec.onstart = () => setVoiceState("listening");
