@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BrowserRouter } from "react-router-dom";
-
+import * as hooks from "@/hooks"
 import TopCreatorsSection from "@/sections/landing/TopCreatorsSection";
 import * as hooks from "@/hooks";
 
@@ -22,6 +22,11 @@ vi.mock("@/components/wallet/WalletConnectModal", () => ({
 vi.mock("@/hooks", () => ({
   useContract: vi.fn(),
   useWallet: vi.fn(),
+  useOnChainAgents: vi.fn().mockReturnValue({
+    agents: [],
+    loading: false,
+    error: null,
+  }),
 }));
 
 vi.mock("react-router-dom", async () => {
@@ -47,6 +52,13 @@ describe("TopCreatorsSection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockOpenWalletConnect.mockClear();
+
+    vi.mocked(hooks.useOnChainAgents).mockReturnValue({
+      agents: [],
+      loading: false,
+      error: null,
+    });
+
     vi.mocked(hooks.useContract).mockReturnValue({
       getNetwork: mockGetNetwork,
     } as unknown as ReturnType<typeof hooks.useContract>);
@@ -71,7 +83,7 @@ describe("TopCreatorsSection", () => {
     );
 
   it("renders loading state with 6 skeleton cards", () => {
-    mockGetNetwork.mockReturnValue(new Promise(() => {}));
+    mockGetNetwork.mockReturnValue(new Promise(() => { }));
     renderComponent();
 
     const grid = screen.getByTestId("top-creators-loading-grid");
