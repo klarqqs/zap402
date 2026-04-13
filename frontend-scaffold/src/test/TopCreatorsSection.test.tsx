@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 import * as hooks from "@/hooks"
 import TopCreatorsSection from "@/sections/landing/TopCreatorsSection";
-import * as hooks from "@/hooks";
 
 vi.mock("@/config/env", async () => {
   const actual = await vi.importActual<typeof import("@/config/env")>("@/config/env");
